@@ -1,3 +1,4 @@
+// Deployment trigger: Ensuring Vercel builds the latest version with Vite 7 fix.
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
