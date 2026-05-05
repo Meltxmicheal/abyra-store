@@ -3,16 +3,14 @@ node_modules/
 dist/
 build/
 .next/
+out/
+.nuxt/
+.output/
+.svelte-kit/
 
 # Environment Variables — never commit real secrets
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.production
-
-# Allow example/template env files (no real secrets inside)
+.env.*
 !.env.production.example
 !.env.example
 
@@ -37,3 +35,21 @@ logs/
 scratch/
 temp/
 tmp/
+.temp/
+.cache/
+.parcel-cache/
+
+# Vite
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Misc
+bower_components/
+.npm/
+.eslintcache
+.stylelintcache
+.node_repl_history
+*.tgz
+.yarn-integrity
+.pnpm-store/
