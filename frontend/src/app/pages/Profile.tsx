@@ -46,6 +46,8 @@ export const Profile = () => {
   const [is2FALoading, setIs2FALoading] = useState(false);
   const [showDisable2FAModal, setShowDisable2FAModal] = useState(false);
   const [disablePassword, setDisablePassword] = useState('');
+  const [showEnable2FAPasswordModal, setShowEnable2FAPasswordModal] = useState(false);
+  const [enable2FAPassword, setEnable2FAPassword] = useState('');
 
   useEffect(() => {
     if (isLoading) return;
@@ -192,27 +194,56 @@ export const Profile = () => {
     }
   };
 
-  const handleSetup2FA = async () => {
+  const handleSetup2FA = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!enable2FAPassword) return;
+
+    console.log("[2FA SETUP] Starting 2FA setup flow...");
     setIs2FALoading(true);
     try {
       const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
+      console.log("[2FA SETUP] Session retrieved, calling setup API...");
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/setup`, {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
-        }
+        },
+        body: JSON.stringify({ password: enable2FAPassword }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      console.log("[2FA SETUP] API Response Status:", response.status);
+
       const data = await response.json();
+      console.log("[2FA SETUP] API Response Data:", data);
+
       if (data.success) {
         setTwoFactorSecret(data.secret);
         setQrCode(data.qrCode);
         setTwoFactorStep('SETUP');
+        setShowEnable2FAPasswordModal(false);
+        setEnable2FAPassword('');
         setShow2FAModal(true);
+        toast.success('Authentication secret generated. Please scan the QR code.');
       } else {
+        console.error("[2FA SETUP] API Error:", data.error);
         toast.error(data.error || 'Failed to initialize 2FA setup');
       }
-    } catch (error) {
-      toast.error('Connection error during 2FA setup');
+    } catch (error: any) {
+      console.error("[2FA SETUP] Catch Error:", error);
+      if (error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error('Connection error during 2FA setup');
+      }
     } finally {
+      console.log("[2FA SETUP] Flow complete, resetting loader");
       setIs2FALoading(false);
     }
   };
@@ -221,18 +252,31 @@ export const Profile = () => {
     const otp = twoFactorOTP.join('');
     if (otp.length < 6) return;
 
+    console.log("[2FA VERIFY] Starting verification...");
     setIs2FALoading(true);
     try {
       const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
+      console.log("[2FA VERIFY] Session retrieved, calling verify API...");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ otp, secret: twoFactorSecret })
+        body: JSON.stringify({ otp, secret: twoFactorSecret }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      console.log("[2FA VERIFY] API Response Status:", response.status);
+
       const data = await response.json();
+      console.log("[2FA VERIFY] API Response Data:", data);
+
       if (data.success) {
         toast.success('Two-step verification enabled successfully');
         setShow2FAModal(false);
@@ -240,11 +284,18 @@ export const Profile = () => {
         // Refresh profile to reflect changes
         window.location.reload();
       } else {
+        console.error("[2FA VERIFY] API Error:", data.error);
         toast.error(data.error || 'Invalid verification code');
       }
-    } catch (error) {
-      toast.error('Failed to verify 2FA code');
+    } catch (error: any) {
+      console.error("[2FA VERIFY] Catch Error:", error);
+      if (error.name === 'AbortError') {
+        toast.error('Verification timed out. Please try again.');
+      } else {
+        toast.error('Failed to verify 2FA code');
+      }
     } finally {
+      console.log("[2FA VERIFY] Flow complete, resetting loader");
       setIs2FALoading(false);
     }
   };
@@ -253,18 +304,31 @@ export const Profile = () => {
     e.preventDefault();
     if (!disablePassword) return;
 
+    console.log("[2FA DISABLE] Starting deactivation flow...");
     setIs2FALoading(true);
     try {
       const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
+      console.log("[2FA DISABLE] Session retrieved, calling disable API...");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/disable`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`
         },
-        body: JSON.stringify({ password: disablePassword })
+        body: JSON.stringify({ password: disablePassword }),
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
+      console.log("[2FA DISABLE] API Response Status:", response.status);
+
       const data = await response.json();
+      console.log("[2FA DISABLE] API Response Data:", data);
+
       if (data.success) {
         toast.success('Two-step verification disabled');
         setShowDisable2FAModal(false);
@@ -272,11 +336,18 @@ export const Profile = () => {
         // Refresh profile
         window.location.reload();
       } else {
+        console.error("[2FA DISABLE] API Error:", data.error);
         toast.error(data.error || 'Incorrect password');
       }
-    } catch (error) {
-      toast.error('Failed to disable 2FA');
+    } catch (error: any) {
+      console.error("[2FA DISABLE] Catch Error:", error);
+      if (error.name === 'AbortError') {
+        toast.error('Request timed out. Please try again.');
+      } else {
+        toast.error('Failed to disable 2FA');
+      }
     } finally {
+      console.log("[2FA DISABLE] Flow complete, resetting loader");
       setIs2FALoading(false);
     }
   };
@@ -467,8 +538,9 @@ export const Profile = () => {
               
               <div className="flex items-center">
                 <button
-                  onClick={() => user.twoFactorEnabled ? setShowDisable2FAModal(true) : handleSetup2FA()}
-                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${user.twoFactorEnabled ? 'bg-green-500' : 'bg-gray-200'}`}
+                  onClick={() => user.twoFactorEnabled ? setShowDisable2FAModal(true) : setShowEnable2FAPasswordModal(true)}
+                  disabled={is2FALoading}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none ${user.twoFactorEnabled ? 'bg-green-500' : 'bg-gray-200'} ${is2FALoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${user.twoFactorEnabled ? 'translate-x-8' : 'translate-x-1'}`}
@@ -845,6 +917,68 @@ export const Profile = () => {
                   className="w-full bg-red-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-red-700 transition-all shadow-xl shadow-red-100 disabled:opacity-50"
                 >
                   {is2FALoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Confirm & Disable'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Enable 2FA Password Confirmation Modal */}
+      <AnimatePresence>
+        {showEnable2FAPasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden"
+            >
+              <div className="p-8 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-gray-900">Enable 2FA</h3>
+                  <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-1">Identity Verification</p>
+                </div>
+                <button onClick={() => setShowEnable2FAPasswordModal(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-all">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSetup2FA} className="p-8 space-y-6">
+                <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                  <p className="text-xs font-bold text-purple-800 leading-relaxed">
+                    Please enter your password to confirm and initialize the two-step verification setup.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest px-1">Your Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={enable2FAPassword}
+                      onChange={(e) => setEnable2FAPassword(e.target.value)}
+                      required
+                      className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-purple-600 font-bold text-gray-900 transition-all outline-none"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-600"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={is2FALoading || !enable2FAPassword}
+                  className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-xl shadow-purple-100 disabled:opacity-50"
+                >
+                  {is2FALoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Confirm & Continue'}
                 </button>
               </form>
             </motion.div>

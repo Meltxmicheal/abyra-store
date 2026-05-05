@@ -1151,47 +1151,83 @@ app.post('/api/auth/reset-password-final', async (req: Request, res: Response) =
 // ==========================================
 
 // Setup 2FA (Generate Secret & QR Code)
-app.get('/api/auth/2fa/setup', async (req: Request, res: Response) => {
+app.post('/api/auth/2fa/setup', async (req: Request, res: Response) => {
+  console.log('[2FA SETUP] Request received');
+  const { password } = req.body;
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+  if (!authHeader) {
+    console.warn('[2FA SETUP] Missing authorization header');
+    return res.status(401).json({ error: 'No authorization header' });
+  }
 
   const token = authHeader.split(' ')[1];
   try {
+    // 1. Verify user session
+    console.log('[2FA SETUP] Verifying session token...');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) throw new Error('Invalid token');
+    if (authError || !user) {
+      console.error('[2FA SETUP] Auth error:', authError);
+      throw new Error('Invalid token');
+    }
+    console.log('[2FA SETUP] User verified:', user.email);
 
-    // Generate secret
+    // 2. Verify password before setup
+    console.log('[2FA SETUP] Verifying password...');
+    const { error: loginError } = await supabaseAdmin.auth.signInWithPassword({
+      email: user.email!,
+      password: password
+    });
+
+    if (loginError) {
+      console.warn('[2FA SETUP] Password verification failed for:', user.email);
+      return res.status(401).json({ error: 'Incorrect password' });
+    }
+    console.log('[2FA SETUP] Password verified');
+
+    // 3. Generate secret
+    console.log('[2FA SETUP] Generating speakeasy secret...');
     const secret = speakeasy.generateSecret({
       name: `ABYRA Store (${user.email})`,
       issuer: 'ABYRA Store'
     });
 
-    // Generate QR Code data URL
+    // 4. Generate QR Code data URL
+    console.log('[2FA SETUP] Generating QR Code...');
     const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '');
 
+    console.log('[2FA SETUP] Setup successful, returning secret and QR code');
     res.json({
       success: true,
       secret: secret.base32,
       qrCode: qrCodeUrl
     });
   } catch (error: any) {
-    console.error('[2FA SETUP] Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[2FA SETUP] Final Catch Error:', error);
+    res.status(500).json({ error: error.message || 'Failed to initialize 2FA setup' });
   }
 });
 
 // Verify & Enable 2FA
 app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
+  console.log('[2FA VERIFY] Request received');
   const { otp, secret } = req.body;
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No authorization header' });
+  if (!authHeader) {
+    console.warn('[2FA VERIFY] Missing authorization header');
+    return res.status(401).json({ error: 'No authorization header' });
+  }
 
   const token = authHeader.split(' ')[1];
   try {
+    console.log('[2FA VERIFY] Verifying session token...');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) throw new Error('Invalid token');
+    if (authError || !user) {
+      console.error('[2FA VERIFY] Auth error:', authError);
+      throw new Error('Invalid token');
+    }
 
     // Verify OTP
+    console.log('[2FA VERIFY] Verifying OTP code...');
     const verified = speakeasy.totp.verify({
       secret: secret,
       encoding: 'base32',
@@ -1200,6 +1236,7 @@ app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
     });
 
     if (verified) {
+      console.log('[2FA VERIFY] OTP verified. Encrypting secret and updating database...');
       // Encrypt and save secret
       const encryptedSecret = encrypt(secret);
       const { error: dbError } = await supabaseAdmin
@@ -1210,15 +1247,20 @@ app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
         })
         .eq('id', user.id);
 
-      if (dbError) throw dbError;
+      if (dbError) {
+        console.error('[2FA VERIFY] Database update error:', dbError);
+        throw dbError;
+      }
 
+      console.log('[2FA VERIFY] 2FA enabled successfully for:', user.email);
       res.json({ success: true, message: 'Two-step verification enabled successfully' });
     } else {
+      console.warn('[2FA VERIFY] Invalid OTP code for:', user.email);
       res.status(400).json({ success: false, error: 'Invalid verification code' });
     }
   } catch (error: any) {
-    console.error('[2FA VERIFY] Error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[2FA VERIFY] Final Catch Error:', error);
+    res.status(500).json({ error: error.message || 'Failed to verify 2FA code' });
   }
 });
 
