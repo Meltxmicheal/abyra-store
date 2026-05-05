@@ -1,0 +1,12 @@
+{
+  "name": "abyra-store",
+  "private": true,
+  "scripts": {
+    "supabase:link": "npx supabase link --project-ref $SUPABASE_PROJECT_REF",
+    "supabase:migration": "npx supabase migration new",
+    "supabase:push": "npx supabase db push"
+  },
+  "devDependencies": {
+    "supabase": "^2.98.0"
+  }
+}

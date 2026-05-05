@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: abyra-backend
+    env: node
+    region: singapore   # closest to India; change to oregon/ohio if needed
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      # ─── Add all secrets below via Render Dashboard → Environment ───
+      # Never commit real values here — list them as sync references only
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_PROJECT_REF
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      # ALLOWED_ORIGINS — comma-separated list of allowed frontend URLs
+      # e.g. https://abyra.store,https://www.abyra.store,https://your-vercel-app.vercel.app
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # VITE_FRONTEND_URL — used in email links (e.g. https://abyra.store)
+      - key: VITE_FRONTEND_URL
+        sync: false
+      # BACKEND_URL — used in self-referencing receipt generation
+      - key: BACKEND_URL
+        sync: false

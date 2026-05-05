@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /receipt/
+Disallow: /order-tracking/
+
+Sitemap: https://abyrastore.com/sitemap.xml
