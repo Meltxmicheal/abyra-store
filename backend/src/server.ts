@@ -218,8 +218,8 @@ app.post('/api/email/welcome', async (req: Request, res: Response) => {
       title: `Welcome, ${name}! 🎉`,
       subtitle: 'Joined the Family',
       content: `We're so happy to have you here. ABYRA is a place where every piece is handcrafted with care and premium materials. We can't wait for you to explore our collection of crochet bouquets, bags, and more.`,
-      buttonText: 'Start Shopping',
-      actionLink: `${process.env.FRONTEND_URL}/products`
+      buttonText: 'Continue Shopping',
+      actionLink: `${process.env.FRONTEND_URL}`
     });
 
     const { data, error } = await resend.emails.send({

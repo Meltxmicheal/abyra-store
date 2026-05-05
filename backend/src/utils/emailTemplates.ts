@@ -232,8 +232,8 @@ export function generateOrderConfirmationEmail(orderId: string, total: number, r
     title: 'Order Confirmed! 🎉',
     subtitle: `Order #${orderId}`,
     content: content,
-    buttonText: receiptUrl ? 'Download Receipt' : 'Track Your Order',
-    actionLink: receiptUrl || `${process.env.FRONTEND_URL}/orders`
+    buttonText: receiptUrl ? 'Download Receipt' : 'Continue Shopping',
+    actionLink: receiptUrl || `${process.env.FRONTEND_URL}`
   });
 }
 
