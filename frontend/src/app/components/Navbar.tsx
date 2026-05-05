@@ -44,17 +44,17 @@ export const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center group transition-transform hover:scale-105 active:scale-95">
+          <Link to="/" className="flex items-center group transition-transform hover:scale-105 active:scale-95 shrink-0">
             <img 
               src={logo} 
               alt="ABYRA STORE Logo" 
-              className="h-14 w-14 rounded-full object-cover shadow-sm group-hover:shadow-md transition-all"
+              className="h-10 w-10 sm:h-14 sm:w-14 rounded-full object-cover shadow-sm group-hover:shadow-md transition-all"
             />
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-10">
-            <Link to="/" className="text-sm font-bold text-gray-600 hover:text-purple-600 transition-colors uppercase tracking-widest">
+          <div className="hidden md:flex items-center space-x-6 lg:space-x-10">
+            <Link to="/" className="text-[10px] lg:text-sm font-bold text-gray-600 hover:text-purple-600 transition-colors uppercase tracking-widest">
               Home
             </Link>
             <Link to="/products" className="text-sm font-bold text-gray-600 hover:text-purple-600 transition-colors uppercase tracking-widest">
@@ -66,7 +66,7 @@ export const Navbar = () => {
           </div>
 
           {/* Right Side Icons */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-1 sm:space-x-3">
             {/* Search Icon */}
             <button 
               onClick={() => navigate('/products')}

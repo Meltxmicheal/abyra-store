@@ -252,7 +252,7 @@ export const Admin = () => {
           )}
         </div>
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-10">
           <StatCard 
             title={isToday ? "Today's Revenue" : "Period Revenue"} 
             value={`₹${stats.totalRevenue.toLocaleString()}`} 
@@ -268,13 +268,13 @@ export const Admin = () => {
 
         {/* Dashboard Tabs */}
         <Tabs defaultValue="orders" className="space-y-6">
-          <TabsList className="bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-2 overflow-x-auto">
-            <TabsTrigger value="orders" className="px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white">Orders</TabsTrigger>
-            <TabsTrigger value="products" className="px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white">Inventory</TabsTrigger>
-            <TabsTrigger value="categories" className="px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white">Collections</TabsTrigger>
-            <TabsTrigger value="reviews" className="px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white">Reviews & Replies</TabsTrigger>
-            <TabsTrigger value="sales" className="px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white">Analytics</TabsTrigger>
-            <TabsTrigger value="profile" className="px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white">Profile</TabsTrigger>
+          <TabsList className="bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-2 overflow-x-auto scrollbar-hide">
+            <TabsTrigger value="orders" className="px-4 sm:px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white transition-all">Orders</TabsTrigger>
+            <TabsTrigger value="products" className="px-4 sm:px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white transition-all">Inventory</TabsTrigger>
+            <TabsTrigger value="categories" className="px-4 sm:px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white transition-all">Collections</TabsTrigger>
+            <TabsTrigger value="reviews" className="px-4 sm:px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white transition-all">Reviews & Replies</TabsTrigger>
+            <TabsTrigger value="sales" className="px-4 sm:px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white transition-all">Analytics</TabsTrigger>
+            <TabsTrigger value="profile" className="px-4 sm:px-6 py-2.5 rounded-xl font-bold whitespace-nowrap data-[state=active]:bg-purple-600 data-[state=active]:text-white transition-all">Profile</TabsTrigger>
           </TabsList>
 
           <TabsContent value="orders" className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -298,8 +298,9 @@ export const Admin = () => {
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="min-w-[800px]">
+                <table className="w-full text-left">
                 <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest border-b border-gray-100">
                   <tr>
                     <th className="px-8 py-4">Customer Name</th>
@@ -376,6 +377,7 @@ export const Admin = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </TabsContent>
 

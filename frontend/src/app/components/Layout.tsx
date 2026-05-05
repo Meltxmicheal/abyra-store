@@ -23,9 +23,9 @@ export const Layout = () => {
       <main className="flex-1">
         <Outlet />
       </main>
-      <footer className="bg-gray-900 text-white py-12">
+      <footer className="bg-gray-900 text-white py-12 md:py-20">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
             <div>
               <h3 className="font-semibold text-lg mb-4">ABYRA</h3>
               <p className="text-gray-400 text-sm">

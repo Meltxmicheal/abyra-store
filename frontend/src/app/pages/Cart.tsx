@@ -49,11 +49,11 @@ export const Cart = () => {
             {cart.map((item) => (
               <div
                 key={`${item.productId}-${item.variantId}`}
-                className="bg-white rounded-lg p-6 shadow-sm"
+                className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-gray-100"
               >
-                <div className="flex gap-6">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                   {/* Product Image */}
-                  <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                  <div className="w-full sm:w-24 h-48 sm:h-24 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                     <img
                       src={item.product.images[0]}
                       alt={item.product.name}
@@ -80,15 +80,8 @@ export const Cart = () => {
                   </div>
 
                   {/* Quantity & Price */}
-                  <div className="flex flex-col items-end justify-between">
-                    <button
-                      onClick={() => removeFromCart(item.productId, item.variantId)}
-                      className="text-red-600 hover:text-red-700 p-1"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-
-                    <div className="flex items-center space-x-3">
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between gap-4 mt-2 sm:mt-0 pt-4 sm:pt-0 border-t sm:border-t-0 border-gray-50">
+                    <div className="flex items-center space-x-3 order-2 sm:order-1">
                       <button
                         onClick={() => updateQuantity(item.productId, item.variantId, item.quantity - 1)}
                         className="w-8 h-8 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50"
@@ -104,10 +97,27 @@ export const Cart = () => {
                       </button>
                     </div>
 
-                    <p className="font-semibold text-gray-900">
-                      ₹{(item.variant.price ?? (item.product.discountEnabled ? item.product.discountPrice : item.product.basePrice) ?? 0) * item.quantity}
-                    </p>
+                    <div className="flex flex-col items-end order-1 sm:order-2">
+                      <button
+                        onClick={() => removeFromCart(item.productId, item.variantId)}
+                        className="text-red-400 hover:text-red-600 p-1 mb-2 hidden sm:block"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                      <p className="font-black text-gray-900 text-lg">
+                        ₹{(item.variant.price ?? (item.product.discountEnabled ? item.product.discountPrice : item.product.basePrice) ?? 0) * item.quantity}
+                      </p>
+                    </div>
                   </div>
+                </div>
+                {/* Mobile Trash Button */}
+                <div className="absolute top-4 right-4 sm:hidden">
+                  <button
+                    onClick={() => removeFromCart(item.productId, item.variantId)}
+                    className="text-red-400 p-2 bg-red-50 rounded-lg"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))}

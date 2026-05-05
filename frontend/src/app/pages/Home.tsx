@@ -54,24 +54,24 @@ export const Home = () => {
               <Star className="w-4 h-4 fill-current" />
               <span>Premium Handcrafted Crochet</span>
             </div>
-            <h1 className="text-5xl md:text-7xl font-black text-gray-900 leading-tight mb-6">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-gray-900 leading-[1.1] mb-6">
               Timeless Art, <br />
               <span className="text-purple-600">Made by Hand.</span>
             </h1>
-            <p className="text-lg md:text-xl text-gray-600 mb-10 max-w-xl leading-relaxed">
+            <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-10 max-w-xl leading-relaxed">
               Discover the beauty of handcrafted crochet. From elegant bouquets to unique accessories, each piece is a masterpiece.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
               <Link
                 to="/products"
-                className="inline-flex items-center justify-center space-x-3 bg-purple-600 text-white px-10 py-4 rounded-2xl font-bold text-lg hover:bg-purple-700 transition-all shadow-xl shadow-purple-200 group"
+                className="inline-flex items-center justify-center space-x-3 bg-purple-600 text-white px-6 sm:px-10 py-3.5 sm:py-4 rounded-2xl font-black text-base sm:text-lg hover:bg-purple-700 transition-all shadow-xl shadow-purple-200 group"
               >
                 <span>Shop Collection</span>
                 <ShoppingBag className="w-5 h-5 group-hover:scale-110 transition-transform" />
               </Link>
               <Link
                 to="/about"
-                className="inline-flex items-center justify-center space-x-2 border-2 border-gray-200 text-gray-700 px-10 py-4 rounded-2xl font-bold text-lg hover:bg-gray-50 transition-all"
+                className="inline-flex items-center justify-center space-x-2 border-2 border-gray-100 text-gray-700 px-6 sm:px-10 py-3.5 sm:py-4 rounded-2xl font-black text-base sm:text-lg hover:bg-gray-50 transition-all"
               >
                 <span>Our Story</span>
               </Link>

@@ -246,12 +246,12 @@ export const ProductDetail = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 pb-20">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
           {/* Image Gallery with Carousel */}
-          <div className="space-y-6">
+          <div className="space-y-4 lg:space-y-6">
             <div className="relative group">
               <div 
-                className="overflow-hidden rounded-[2.5rem] bg-white shadow-2xl border border-gray-100 touch-pan-y select-none cursor-grab active:cursor-grabbing" 
+                className="overflow-hidden rounded-3xl lg:rounded-[2.5rem] bg-white shadow-2xl border border-gray-100 touch-pan-y select-none cursor-grab active:cursor-grabbing" 
                 ref={emblaRef}
               >
                 <div className="flex">
@@ -293,12 +293,12 @@ export const ProductDetail = () => {
             </div>
 
             {/* Thumbnails */}
-            <div className="flex space-x-4 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex space-x-3 sm:space-x-4 overflow-x-auto pb-4 scrollbar-hide -mx-1 px-1">
               {allImages.map((image: string, index: number) => (
                 <button 
                   key={index} 
                   onClick={() => setSelectedImage(image)} 
-                  className={`flex-shrink-0 w-20 h-20 rounded-2xl overflow-hidden bg-white shadow-md border-2 transition-all ${selectedImage === image ? 'border-purple-600 scale-105 ring-4 ring-purple-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                  className={`flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden bg-white shadow-md border-2 transition-all ${selectedImage === image ? 'border-purple-600 scale-105 ring-4 ring-purple-50' : 'border-transparent opacity-60 hover:opacity-100'}`}
                 >
                   <img src={image} alt="" className="w-full h-full object-cover" />
                 </button>
@@ -315,20 +315,20 @@ export const ProductDetail = () => {
                   <Share2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 </button>
               </div>
-              <h1 className="text-5xl font-black text-gray-900 leading-tight">{product.name}</h1>
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center bg-yellow-50 px-4 py-2 rounded-2xl border border-yellow-100">
-                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400 mr-2" />
-                  <span className="font-black text-yellow-700">{averageRating ? averageRating.toFixed(1) : 'No reviews'}</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900 leading-tight">{product.name}</h1>
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                <div className="flex items-center bg-yellow-50 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl border border-yellow-100">
+                  <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-yellow-400 text-yellow-400 mr-2" />
+                  <span className="font-black text-yellow-700 text-sm sm:text-base">{averageRating ? averageRating.toFixed(1) : 'No reviews'}</span>
                 </div>
-                <span className="text-sm font-bold text-gray-400 border-l border-gray-200 pl-6">{reviews.length} Verified Reviews</span>
+                <span className="text-xs sm:text-sm font-bold text-gray-400 sm:border-l sm:border-gray-200 sm:pl-6">{reviews.length} Verified Reviews</span>
               </div>
             </div>
 
-            <div className="p-8 bg-white rounded-[2rem] shadow-xl border border-gray-100 space-y-6">
+            <div className="p-6 sm:p-8 bg-white rounded-3xl lg:rounded-[2rem] shadow-xl border border-gray-100 space-y-6">
               <div className="flex items-baseline space-x-4">
-                <p className="text-5xl font-black text-gray-900">₹{displayPrice.toLocaleString()}</p>
-                {hasDiscount && <p className="text-xl font-bold text-gray-400 line-through">₹{originalPrice.toLocaleString()}</p>}
+                <p className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-900">₹{displayPrice.toLocaleString()}</p>
+                {hasDiscount && <p className="text-lg sm:text-xl font-bold text-gray-400 line-through">₹{originalPrice.toLocaleString()}</p>}
               </div>
 
               <div className="border-t border-gray-50 pt-6">
@@ -362,14 +362,14 @@ export const ProductDetail = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-6">
-                    <div className="bg-gray-50 rounded-2xl p-2 flex items-center space-x-4 border border-gray-100">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:space-x-6">
+                    <div className="bg-gray-50 rounded-2xl p-2 flex items-center justify-between sm:justify-start sm:space-x-4 border border-gray-100">
                       <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center font-black text-gray-900 hover:bg-gray-100 transition-colors">-</button>
                       <span className="text-xl font-black text-gray-900 min-w-[2ch] text-center">{quantity}</span>
                       <button onClick={() => setQuantity(quantity + 1)} className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center font-black text-gray-900 hover:bg-gray-100 transition-colors">+</button>
                     </div>
-                    <button onClick={handleAddToCart} className="flex-1 bg-purple-600 text-white py-5 rounded-2xl font-black text-xl hover:bg-purple-700 transition shadow-2xl shadow-purple-100 flex items-center justify-center space-x-3 active:scale-95">
-                      <ShoppingCart className="w-6 h-6" />
+                    <button onClick={handleAddToCart} className="flex-1 bg-purple-600 text-white py-4 sm:py-5 rounded-2xl font-black text-lg sm:text-xl hover:bg-purple-700 transition shadow-2xl shadow-purple-100 flex items-center justify-center space-x-3 active:scale-95">
+                      <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
                       <span>Add To Cart</span>
                     </button>
                   </div>
