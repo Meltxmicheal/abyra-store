@@ -9,7 +9,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
 import { createClient } from '@supabase/supabase-js';
-import { generateBrandedEmail, generateOTPEmail, generateOrderConfirmationEmail, generatePasswordResetOTPEmail, generateVerificationEmail, generatePasswordUpdatedEmail } from './utils/emailTemplates';
+import { generateBrandedEmail, generateOTPEmail, generateOrderConfirmationEmail, generatePasswordResetOTPEmail, generateVerificationEmail, generatePasswordUpdatedEmail, generate2FAOTPEmail } from './utils/emailTemplates';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { encrypt, decrypt } from './utils/twoFactor';
@@ -1226,20 +1226,120 @@ app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
 app.post('/api/auth/2fa/status', async (req: Request, res: Response) => {
   const { email } = req.body;
   try {
+    const cleanEmail = email.trim().toLowerCase();
     const { data, error } = await supabaseAdmin
       .from('users')
-      .select('two_factor_enabled')
-      .eq('email', email)
+      .select('two_factor_enabled, email')
+      .eq('email', cleanEmail)
       .maybeSingle();
 
     if (error) throw error;
 
     res.json({
       success: true,
-      enabled: data?.two_factor_enabled || false
+      enabled: data?.two_factor_enabled || false,
+      email: data?.email
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Send 2FA Fallback OTP (Email)
+app.post('/api/auth/2fa/send-fallback-otp', async (req: Request, res: Response) => {
+  const { email } = req.body;
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // 1. Verify user exists and has 2FA enabled
+    const { data: user, error: userError } = await supabaseAdmin
+      .from('users')
+      .select('id, two_factor_enabled')
+      .eq('email', cleanEmail)
+      .single();
+
+    if (userError || !user || !user.two_factor_enabled) {
+      return res.status(400).json({ error: '2FA is not enabled for this account' });
+    }
+
+    // 2. Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
+
+    // 3. Store OTP
+    await supabaseAdmin.from('otp_logs').insert({
+      email: cleanEmail,
+      otp: hashedOtp,
+      type: '2fa_fallback',
+      expires_at: expiresAt,
+      attempts: 0
+    });
+
+    // 4. Send Email
+    const html = generate2FAOTPEmail(otp);
+    await resend.emails.send({
+      from: process.env.RESEND_FROM_EMAIL || 'ABYRA Store <security@yourdomain.com>',
+      to: cleanEmail,
+      subject: '🔐 Your 2FA Login Code — ABYRA',
+      html,
+    });
+
+    res.json({ success: true, message: 'Verification code sent to your email' });
+  } catch (error: any) {
+    console.error('[2FA FALLBACK] Send Error:', error);
+    res.status(500).json({ error: 'Failed to send verification code' });
+  }
+});
+
+// Verify 2FA Fallback OTP (Email)
+app.post('/api/auth/2fa/verify-fallback-otp', async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+  try {
+    const cleanEmail = email.trim().toLowerCase();
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    
+    // 1. Fetch latest unused OTP
+    const { data, error } = await supabaseAdmin
+      .from('otp_logs')
+      .select('*')
+      .eq('email', cleanEmail)
+      .eq('type', '2fa_fallback')
+      .eq('used', false)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data) {
+      return res.status(400).json({ error: 'Invalid or expired code' });
+    }
+
+    // 2. Check expiry
+    if (new Date(data.expires_at) < new Date()) {
+      return res.status(400).json({ error: 'Verification code has expired' });
+    }
+
+    // 3. Check attempts
+    const newAttempts = (data.attempts || 0) + 1;
+    if (newAttempts > 5) {
+      await supabaseAdmin.from('otp_logs').update({ used: true }).eq('id', data.id);
+      return res.status(400).json({ error: 'Too many failed attempts. Please request a new code.' });
+    }
+
+    await supabaseAdmin.from('otp_logs').update({ attempts: newAttempts }).eq('id', data.id);
+
+    // 4. Verify code
+    if (data.otp !== hashedOtp) {
+      return res.status(400).json({ error: 'Incorrect verification code' });
+    }
+
+    // 5. Mark as used
+    await supabaseAdmin.from('otp_logs').update({ used: true }).eq('id', data.id);
+
+    res.json({ success: true, message: 'Verification successful' });
+  } catch (error: any) {
+    console.error('[2FA FALLBACK] Verify Error:', error);
+    res.status(500).json({ error: 'Verification failed' });
   }
 });
 
@@ -1367,7 +1467,7 @@ app.post('/api/auth/admin/login-start', async (req: Request, res: Response) => {
       })
       .eq('id', userId);
 
-    const html = generateOTPEmail(otp);
+    const html = generate2FAOTPEmail(otp);
     await resend.emails.send({
       from: process.env.RESEND_FROM_EMAIL || 'ABYRA Store <security@yourdomain.com>',
       to: cleanEmail,

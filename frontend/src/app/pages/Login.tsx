@@ -21,7 +21,7 @@ export const Login = () => {
 
   // 2FA state
   const [show2FAModal, setShow2FAModal] = useState(false);
-  const [loginStep, setLoginStep] = useState<'credentials' | 'email_otp' | 'authenticator'>('credentials');
+  const [loginStep, setLoginStep] = useState<'credentials' | 'choice' | 'email_otp' | 'authenticator' | 'admin_email_otp'>('credentials');
   const [emailOtp, setEmailOtp] = useState(['', '', '', '', '', '']);
   const [twoFactorOTP, setTwoFactorOTP] = useState(['', '', '', '', '', '']);
   const [is2FAVerifying, setIs2FAVerifying] = useState(false);
@@ -43,7 +43,7 @@ export const Login = () => {
 
   useEffect(() => {
     let interval: any;
-    if (loginStep === 'email_otp' && resendTimer > 0) {
+    if ((loginStep === 'email_otp' || loginStep === 'admin_email_otp') && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer((prev) => prev - 1);
       }, 1000);
@@ -94,8 +94,28 @@ export const Login = () => {
     setError('');
 
     try {
+      // 1. First, check credentials with Supabase
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword
+      });
+
+      if (authError) {
+        setError(authError.message);
+        toast.error(authError.message);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Check 2FA Status and Admin status in one go (or separate calls)
+      const statusRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
+      });
+      const statusData = await statusRes.json();
+
       const deviceToken = localStorage.getItem('abyra_admin_device_token');
-      
       const startRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/admin/login-start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,23 +123,21 @@ export const Login = () => {
       });
       const startData = await startRes.json();
 
-      if (!startRes.ok) {
-        setError(startData.error || 'Login failed');
-        toast.error(startData.error || 'Login failed');
-        setLoading(false);
-        return;
-      }
+      setTempUser({ email: cleanEmail, password: cleanPassword });
 
-      if (startData.isAdmin) {
-        if (startData.skip2FA) {
-          await proceedWithLocalLogin(cleanEmail, cleanPassword);
-        } else {
-          setTempUser({ email: cleanEmail, password: cleanPassword });
-          setLoginStep('email_otp');
-          setResendTimer(30);
-          setShow2FAModal(true);
-        }
-      } else {
+      // 3. Logic for 2FA
+      // If admin AND 2FA is forced/enabled
+      if (startData.isAdmin && !startData.skip2FA) {
+        setLoginStep('choice');
+        setShow2FAModal(true);
+      } 
+      // If regular user AND 2FA is enabled
+      else if (!startData.isAdmin && statusData.enabled) {
+        setLoginStep('choice');
+        setShow2FAModal(true);
+      }
+      // Otherwise, proceed
+      else {
         await proceedWithLocalLogin(cleanEmail, cleanPassword);
       }
     } catch (err: any) {
@@ -127,7 +145,7 @@ export const Login = () => {
       setError('Unexpected error. Please try again.');
       toast.error('Unexpected error. Please try again.');
     } finally {
-      if (loginStep === 'credentials') setLoading(false);
+      if (!show2FAModal) setLoading(false);
     }
   };
 
@@ -142,7 +160,31 @@ export const Login = () => {
     toast.success('Welcome back!');
   };
 
-  const handleVerifyEmailOtp = async () => {
+  const handleSendFallbackOtp = async () => {
+    setIs2FAVerifying(true);
+    setTwoFactorError('');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/send-fallback-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: tempUser.email })
+      });
+      const data = await response.json();
+      if (data.success) {
+        setLoginStep('email_otp');
+        setResendTimer(30);
+        toast.success('Code sent to your email');
+      } else {
+        setTwoFactorError(data.error || 'Failed to send code');
+      }
+    } catch (error) {
+      setTwoFactorError('Network error. Please try again.');
+    } finally {
+      setIs2FAVerifying(false);
+    }
+  };
+
+  const handleVerifyAdminEmailOtp = async () => {
     const otp = emailOtp.join('');
     if (otp.length < 6) return;
 
@@ -167,6 +209,33 @@ export const Login = () => {
     }
   };
 
+  const handleVerifyEmailOtp = async () => {
+    const otp = emailOtp.join('');
+    if (otp.length < 6) return;
+
+    setIs2FAVerifying(true);
+    setTwoFactorError('');
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/verify-fallback-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: tempUser.email, otp })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Verification successful');
+        setShow2FAModal(false);
+        await proceedWithLocalLogin(tempUser.email, tempUser.password);
+      } else {
+        setTwoFactorError(data.error || 'Invalid verification code');
+      }
+    } catch (error) {
+      setTwoFactorError('Failed to verify code');
+    } finally {
+      setIs2FAVerifying(false);
+    }
+  };
+
   const handleVerify2FA = async () => {
     const otp = twoFactorOTP.join('');
     if (otp.length < 6) return;
@@ -174,7 +243,7 @@ export const Login = () => {
     setIs2FAVerifying(true);
     setTwoFactorError('');
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/admin/verify-authenticator`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/login-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: tempUser.email, otp })
@@ -204,7 +273,8 @@ export const Login = () => {
     setEmailOtp(newOtp);
 
     if (value && index < 5) {
-      document.getElementById(`login-email-otp-${index + 1}`)?.focus();
+      const id = loginStep === 'admin_email_otp' || loginStep === 'email_otp' ? `login-email-otp-${index + 1}` : `login-email-otp-${index + 1}`;
+      document.getElementById(id)?.focus();
     }
   };
 
@@ -361,51 +431,83 @@ export const Login = () => {
                     <Smartphone className="w-8 h-8 text-purple-600" />
                   </div>
                   <p className="text-gray-600 font-bold">
-                    {loginStep === 'email_otp'
+                    {loginStep === 'choice'
+                      ? 'Choose your verification method'
+                      : loginStep === 'admin_email_otp' || loginStep === 'email_otp'
                       ? 'Please enter the 6-digit code sent to your email.'
                       : 'Please enter the 6-digit code from your Google Authenticator app.'}
                   </p>
                 </div>
 
-                <div className="flex justify-center gap-2">
-                  {loginStep === 'email_otp' ? (
-                    emailOtp.map((digit, idx) => (
-                      <input
-                        key={`email-${idx}`}
-                        id={`login-email-otp-${idx}`}
-                        type="text"
-                        value={digit}
-                        onChange={(e) => handleEmailOtpChange(idx, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Backspace' && !emailOtp[idx] && idx > 0) {
-                            document.getElementById(`login-email-otp-${idx - 1}`)?.focus();
-                          }
-                        }}
-                        className={`w-12 h-16 text-center text-2xl font-black rounded-2xl border-2 transition-all outline-none ${
-                          twoFactorError ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-100 bg-gray-50 focus:border-purple-600 focus:bg-white text-purple-600'
-                        }`}
-                      />
-                    ))
-                  ) : (
-                    twoFactorOTP.map((digit, idx) => (
-                      <input
-                        key={`auth-${idx}`}
-                        id={`login-auth-otp-${idx}`}
-                        type="text"
-                        value={digit}
-                        onChange={(e) => handle2FAOtpChange(idx, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Backspace' && !twoFactorOTP[idx] && idx > 0) {
-                            document.getElementById(`login-auth-otp-${idx - 1}`)?.focus();
-                          }
-                        }}
-                        className={`w-12 h-16 text-center text-2xl font-black rounded-2xl border-2 transition-all outline-none ${
-                          twoFactorError ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-100 bg-gray-50 focus:border-purple-600 focus:bg-white text-purple-600'
-                        }`}
-                      />
-                    ))
-                  )}
-                </div>
+                {loginStep === 'choice' ? (
+                  <div className="space-y-4">
+                    <button
+                      onClick={() => setLoginStep('authenticator')}
+                      className="w-full flex items-center p-4 bg-purple-50 rounded-2xl border-2 border-transparent hover:border-purple-600 transition-all text-left"
+                    >
+                      <div className="p-3 bg-white rounded-xl mr-4 shadow-sm">
+                        <Smartphone className="w-6 h-6 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="font-black text-gray-900">Google Authenticator</p>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Recommended</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={handleSendFallbackOtp}
+                      disabled={is2FAVerifying}
+                      className="w-full flex items-center p-4 bg-gray-50 rounded-2xl border-2 border-transparent hover:border-purple-600 transition-all text-left"
+                    >
+                      <div className="p-3 bg-white rounded-xl mr-4 shadow-sm">
+                        <Loader2 className={`w-6 h-6 text-purple-600 ${is2FAVerifying ? 'animate-spin' : ''}`} />
+                      </div>
+                      <div>
+                        <p className="font-black text-gray-900">Email OTP</p>
+                        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Fallback Method</p>
+                      </div>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-center gap-2">
+                    {loginStep === 'admin_email_otp' || loginStep === 'email_otp' ? (
+                      emailOtp.map((digit, idx) => (
+                        <input
+                          key={`email-${idx}`}
+                          id={`login-email-otp-${idx}`}
+                          type="text"
+                          value={digit}
+                          onChange={(e) => handleEmailOtpChange(idx, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Backspace' && !emailOtp[idx] && idx > 0) {
+                              document.getElementById(`login-email-otp-${idx - 1}`)?.focus();
+                            }
+                          }}
+                          className={`w-12 h-16 text-center text-2xl font-black rounded-2xl border-2 transition-all outline-none ${
+                            twoFactorError ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-100 bg-gray-50 focus:border-purple-600 focus:bg-white text-purple-600'
+                          }`}
+                        />
+                      ))
+                    ) : (
+                      twoFactorOTP.map((digit, idx) => (
+                        <input
+                          key={`auth-${idx}`}
+                          id={`login-auth-otp-${idx}`}
+                          type="text"
+                          value={digit}
+                          onChange={(e) => handle2FAOtpChange(idx, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Backspace' && !twoFactorOTP[idx] && idx > 0) {
+                              document.getElementById(`login-auth-otp-${idx - 1}`)?.focus();
+                            }
+                          }}
+                          className={`w-12 h-16 text-center text-2xl font-black rounded-2xl border-2 transition-all outline-none ${
+                            twoFactorError ? 'border-red-500 bg-red-50 text-red-600' : 'border-gray-100 bg-gray-50 focus:border-purple-600 focus:bg-white text-purple-600'
+                          }`}
+                        />
+                      ))
+                    )}
+                  </div>
+                )}
 
                 {twoFactorError && (
                   <motion.div
@@ -419,17 +521,17 @@ export const Login = () => {
                 )}
 
                 <div className="space-y-4">
-                  {loginStep === 'email_otp' ? (
+                  {loginStep === 'choice' ? null : loginStep === 'admin_email_otp' || loginStep === 'email_otp' ? (
                     <div className="space-y-4">
                       <button
-                        onClick={handleVerifyEmailOtp}
+                        onClick={loginStep === 'admin_email_otp' ? handleVerifyAdminEmailOtp : handleVerifyEmailOtp}
                         disabled={is2FAVerifying || emailOtp.join('').length < 6}
                         className="w-full bg-purple-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-xl shadow-purple-100 disabled:opacity-50 flex items-center justify-center"
                       >
                         {is2FAVerifying ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Verify Email Code</span>}
                       </button>
                       <button
-                        onClick={handleResendOtp}
+                        onClick={loginStep === 'admin_email_otp' ? handleResendOtp : handleSendFallbackOtp}
                         disabled={resendTimer > 0 || is2FAVerifying}
                         className="w-full text-sm font-bold text-purple-600 hover:text-purple-700 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
                       >

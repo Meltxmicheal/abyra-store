@@ -189,6 +189,23 @@ export function generateBrandedEmail(options: TemplateOptions): string {
 }
 
 /**
+ * Specific template for 2FA OTP
+ */
+export function generate2FAOTPEmail(otp: string): string {
+  return generateBrandedEmail({
+    title: '🔐 Your 2FA Login Code',
+    subtitle: 'SECURITY VERIFICATION',
+    content: `
+      <p>A request was made to access your ABYRA account. For your security, please use the 6-digit verification code below to complete your login. This code is valid for 5 minutes.</p>
+      <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f3f0f7; border-radius: 12px; border: 2px dashed #5b2c83;">
+        <span style="font-size: 36px; font-weight: 800; letter-spacing: 10px; color: #5b2c83;">${otp}</span>
+      </div>
+      <p style="text-align: center; color: #6b7280; font-size: 14px;">If you didn't attempt to login, please change your password immediately.</p>
+    `
+  });
+}
+
+/**
  * Specific template for OTP with "View OTP" button logic
  */
 export function generateOTPEmail(otp: string): string {
