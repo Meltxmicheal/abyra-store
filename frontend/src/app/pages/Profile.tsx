@@ -205,7 +205,7 @@ export const Profile = () => {
       console.log("[2FA SETUP] Session retrieved, calling setup API...");
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/setup`, {
         method: 'POST',
@@ -230,7 +230,7 @@ export const Profile = () => {
         setShowEnable2FAPasswordModal(false);
         setEnable2FAPassword('');
         setShow2FAModal(true);
-        toast.success('Authentication secret generated. Please scan the QR code.');
+        toast.success('Authenticator secret generated successfully.');
       } else {
         console.error("[2FA SETUP] API Error:", data.error);
         toast.error(data.error || 'Failed to initialize 2FA setup');
@@ -259,7 +259,7 @@ export const Profile = () => {
       console.log("[2FA VERIFY] Session retrieved, calling verify API...");
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/verify`, {
         method: 'POST',
@@ -311,7 +311,7 @@ export const Profile = () => {
       console.log("[2FA DISABLE] Session retrieved, calling disable API...");
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/disable`, {
         method: 'POST',
@@ -785,7 +785,16 @@ export const Profile = () => {
                   <h3 className="text-2xl font-black text-gray-900">Setup 2FA</h3>
                   <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-1">Google Authenticator</p>
                 </div>
-                <button onClick={() => setShow2FAModal(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-all">
+                <button 
+                  onClick={() => {
+                    setShow2FAModal(false);
+                    setTwoFactorSecret('');
+                    setQrCode('');
+                    setTwoFactorOTP(['', '', '', '', '', '']);
+                    setTwoFactorStep('SETUP');
+                  }} 
+                  className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-all"
+                >
                   <X className="w-6 h-6" />
                 </button>
               </div>
@@ -805,9 +814,21 @@ export const Profile = () => {
                       )}
                     </div>
 
-                    <div className="bg-purple-50 p-4 rounded-2xl">
+                    <div className="bg-purple-50 p-4 rounded-2xl relative group">
                       <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mb-1">Manual Entry Key</p>
-                      <p className="text-sm font-black text-gray-700 tracking-[0.2em]">{twoFactorSecret}</p>
+                      <p className="text-sm font-black text-gray-700 tracking-[0.2em] break-all">{twoFactorSecret}</p>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(twoFactorSecret);
+                          toast.success('Secret key copied to clipboard');
+                        }}
+                        className="absolute right-2 top-2 p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                        title="Copy Key"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                        </svg>
+                      </button>
                     </div>
 
                     <button
@@ -939,7 +960,13 @@ export const Profile = () => {
                   <h3 className="text-2xl font-black text-gray-900">Enable 2FA</h3>
                   <p className="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-1">Identity Verification</p>
                 </div>
-                <button onClick={() => setShowEnable2FAPasswordModal(false)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-all">
+                <button 
+                  onClick={() => {
+                    setShowEnable2FAPasswordModal(false);
+                    setEnable2FAPassword('');
+                  }} 
+                  className="p-2 text-gray-400 hover:bg-gray-100 rounded-full transition-all"
+                >
                   <X className="w-6 h-6" />
                 </button>
               </div>

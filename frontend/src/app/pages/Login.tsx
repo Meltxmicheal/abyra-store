@@ -90,60 +90,46 @@ export const Login = () => {
       return;
     }
 
-    setLoading(true);
-    setError('');
-
     try {
-      // 1. First, check credentials with Supabase
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: cleanPassword
-      });
-
-      if (authError) {
-        setError(authError.message);
-        toast.error(authError.message);
-        setLoading(false);
-        return;
-      }
-
-      // 2. Check 2FA Status and Admin status in one go (or separate calls)
-      const statusRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail })
-      });
-      const statusData = await statusRes.json();
-
+      // 1. Verify credentials and check 2FA status via Backend FIRST
+      // This prevents creating a Supabase session before 2FA is verified
       const deviceToken = localStorage.getItem('abyra_admin_device_token');
+      
+      console.log('[Login] Verifying credentials and 2FA status via backend...');
       const startRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/admin/login-start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword, deviceToken })
       });
+      
       const startData = await startRes.json();
+      console.log('[Login] Backend response:', startData);
+
+      if (!startRes.ok) {
+        setError(startData.error || 'Invalid email or password');
+        toast.error(startData.error || 'Invalid email or password');
+        setLoading(false);
+        return;
+      }
 
       setTempUser({ email: cleanEmail, password: cleanPassword });
 
-      // 3. Logic for 2FA
-      // If admin AND 2FA is forced/enabled
-      if (startData.isAdmin && !startData.skip2FA) {
-        setLoginStep('choice');
+      // 2. Logic for 2FA
+      // If 2FA is required (admin forced or user enabled)
+      if (startData.requires2FA) {
+        console.log('[Login] 2FA required, showing verification modal');
+        setLoginStep('authenticator'); // Default to authenticator if 2FA enabled
         setShow2FAModal(true);
       } 
-      // If regular user AND 2FA is enabled
-      else if (!startData.isAdmin && statusData.enabled) {
-        setLoginStep('choice');
-        setShow2FAModal(true);
-      }
-      // Otherwise, proceed
+      // Otherwise, proceed to local login
       else {
+        console.log('[Login] No 2FA required, proceeding with sign-in');
         await proceedWithLocalLogin(cleanEmail, cleanPassword);
       }
     } catch (err: any) {
-      console.error('[Auth] Login check error:', err);
-      setError('Unexpected error. Please try again.');
-      toast.error('Unexpected error. Please try again.');
+      console.error('[Auth] Login flow error:', err);
+      setError('Connection error. Please check your internet.');
+      toast.error('Connection error. Please try again.');
     } finally {
       if (!show2FAModal) setLoading(false);
     }

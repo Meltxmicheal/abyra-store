@@ -1155,6 +1155,7 @@ app.post('/api/auth/2fa/setup', async (req: Request, res: Response) => {
   console.log('[2FA SETUP] Request received');
   const { password } = req.body;
   const authHeader = req.headers.authorization;
+  
   if (!authHeader) {
     console.warn('[2FA SETUP] Missing authorization header');
     return res.status(401).json({ error: 'No authorization header' });
@@ -1163,55 +1164,65 @@ app.post('/api/auth/2fa/setup', async (req: Request, res: Response) => {
   const token = authHeader.split(' ')[1];
   try {
     // 1. Verify user session
-    console.log('[2FA SETUP] Verifying session token...');
+    console.log('[2FA SETUP] Verifying session token with Supabase...');
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       console.error('[2FA SETUP] Auth error:', authError);
-      throw new Error('Invalid token');
+      return res.status(401).json({ error: 'Invalid or expired session' });
     }
-    console.log('[2FA SETUP] User verified:', user.email);
+    console.log(`[2FA SETUP] User verified: ${user.email}`);
 
     // 2. Verify password before setup
-    console.log('[2FA SETUP] Verifying password...');
+    console.log('[2FA SETUP] Verifying password for account security...');
     const { error: loginError } = await supabaseAdmin.auth.signInWithPassword({
       email: user.email!,
       password: password
     });
 
     if (loginError) {
-      console.warn('[2FA SETUP] Password verification failed for:', user.email);
-      return res.status(401).json({ error: 'Incorrect password' });
+      console.warn(`[2FA SETUP] Password verification failed for: ${user.email}`);
+      return res.status(401).json({ error: 'Incorrect password. Verification failed.' });
     }
-    console.log('[2FA SETUP] Password verified');
+    console.log('[2FA SETUP] Password verified successfully.');
 
     // 3. Generate secret
-    console.log('[2FA SETUP] Generating speakeasy secret...');
+    console.log('[2FA SETUP] Generating TOTP secret using speakeasy...');
     const secret = speakeasy.generateSecret({
       name: `ABYRA Store (${user.email})`,
-      issuer: 'ABYRA Store'
+      issuer: 'ABYRA Store',
+      length: 20
     });
 
     // 4. Generate QR Code data URL
-    console.log('[2FA SETUP] Generating QR Code...');
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url || '');
+    console.log('[2FA SETUP] Generating QR Code image...');
+    if (!secret.otpauth_url) {
+      throw new Error('Failed to generate OTP authentication URL');
+    }
+    
+    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
 
-    console.log('[2FA SETUP] Setup successful, returning secret and QR code');
+    console.log('[2FA SETUP] Setup complete. Returning secret and QR code.');
     res.json({
       success: true,
       secret: secret.base32,
       qrCode: qrCodeUrl
     });
   } catch (error: any) {
-    console.error('[2FA SETUP] Final Catch Error:', error);
+    console.error('[2FA SETUP] CRITICAL ERROR:', error);
     res.status(500).json({ error: error.message || 'Failed to initialize 2FA setup' });
   }
 });
 
 // Verify & Enable 2FA
 app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
-  console.log('[2FA VERIFY] Request received');
+  console.log('[2FA VERIFY] Verification request received');
   const { otp, secret } = req.body;
   const authHeader = req.headers.authorization;
+
+  if (!otp || !secret) {
+    return res.status(400).json({ error: 'OTP and secret are required' });
+  }
+
   if (!authHeader) {
     console.warn('[2FA VERIFY] Missing authorization header');
     return res.status(401).json({ error: 'No authorization header' });
@@ -1223,22 +1234,23 @@ app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
     const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
     if (authError || !user) {
       console.error('[2FA VERIFY] Auth error:', authError);
-      throw new Error('Invalid token');
+      return res.status(401).json({ error: 'Invalid or expired session' });
     }
 
     // Verify OTP
-    console.log('[2FA VERIFY] Verifying OTP code...');
+    console.log(`[2FA VERIFY] Verifying OTP for user: ${user.email}`);
     const verified = speakeasy.totp.verify({
       secret: secret,
       encoding: 'base32',
       token: otp,
-      window: 1 // allow 30s window
+      window: 2 // Allow slightly larger window for clock drift (approx 60s)
     });
 
     if (verified) {
-      console.log('[2FA VERIFY] OTP verified. Encrypting secret and updating database...');
-      // Encrypt and save secret
+      console.log('[2FA VERIFY] OTP matched. Encrypting secret...');
       const encryptedSecret = encrypt(secret);
+      
+      console.log('[2FA VERIFY] Updating database record...');
       const { error: dbError } = await supabaseAdmin
         .from('users')
         .update({
@@ -1248,18 +1260,18 @@ app.post('/api/auth/2fa/verify', async (req: Request, res: Response) => {
         .eq('id', user.id);
 
       if (dbError) {
-        console.error('[2FA VERIFY] Database update error:', dbError);
-        throw dbError;
+        console.error('[2FA VERIFY] Database update failure:', dbError);
+        return res.status(500).json({ error: 'Failed to update user security settings' });
       }
 
-      console.log('[2FA VERIFY] 2FA enabled successfully for:', user.email);
+      console.log(`[2FA VERIFY] SUCCESS: 2FA enabled for ${user.email}`);
       res.json({ success: true, message: 'Two-step verification enabled successfully' });
     } else {
-      console.warn('[2FA VERIFY] Invalid OTP code for:', user.email);
-      res.status(400).json({ success: false, error: 'Invalid verification code' });
+      console.warn(`[2FA VERIFY] FAILED: Invalid OTP entered by ${user.email}`);
+      res.status(400).json({ success: false, error: 'Invalid verification code. Please try again.' });
     }
   } catch (error: any) {
-    console.error('[2FA VERIFY] Final Catch Error:', error);
+    console.error('[2FA VERIFY] CRITICAL ERROR:', error);
     res.status(500).json({ error: error.message || 'Failed to verify 2FA code' });
   }
 });
@@ -1463,63 +1475,69 @@ app.post('/api/auth/2fa/disable', async (req: Request, res: Response) => {
 
 app.post('/api/auth/admin/login-start', async (req: Request, res: Response) => {
   const { email, password, deviceToken } = req.body;
+  console.log(`[AUTH] Login start for: ${email}`);
+  
   try {
     const cleanEmail = email.trim().toLowerCase();
     
+    // 1. Verify basic credentials with Supabase
     const { data: authData, error: authError } = await supabaseAdmin.auth.signInWithPassword({
       email: cleanEmail,
       password: password
     });
 
     if (authError || !authData.user) {
+      console.warn(`[AUTH] Failed login attempt for: ${cleanEmail}`);
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
     const userId = authData.user.id;
 
+    // 2. Fetch user security profile
     const { data: userData, error: userError } = await supabaseAdmin
       .from('users')
-      .select('role, admin_device_token, admin_device_expiry')
+      .select('role, two_factor_enabled, admin_device_token, admin_device_expiry')
       .eq('id', userId)
       .single();
 
-    if (userError || userData.role !== 'admin') {
-      return res.json({ success: true, isAdmin: false });
+    if (userError) {
+      console.error(`[AUTH] Profile fetch error for ${userId}:`, userError);
+      return res.status(500).json({ error: 'Failed to retrieve security profile' });
     }
 
+    // 3. Check for Trusted Device (Bypass 2FA)
     let skip2FA = false;
     if (deviceToken && userData.admin_device_token === deviceToken) {
       if (userData.admin_device_expiry && new Date(userData.admin_device_expiry) > new Date()) {
+        console.log(`[AUTH] Trusted device detected for ${cleanEmail}. Skipping 2FA.`);
         skip2FA = true;
       }
     }
 
-    if (skip2FA) {
-      return res.json({ success: true, isAdmin: true, skip2FA: true });
+    // 4. Determine if 2FA is required
+    // Always require 2FA for admins if enabled, or if they haven't bypassed via trusted device
+    const requires2FA = (userData.role === 'admin' || userData.two_factor_enabled) && !skip2FA;
+
+    if (!requires2FA) {
+      console.log(`[AUTH] No 2FA required for ${cleanEmail}. Proceeding.`);
+      return res.json({ success: true, isAdmin: userData.role === 'admin', requires2FA: false });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
-    await supabaseAdmin
-      .from('users')
-      .update({
-        admin_login_otp: otp,
-        admin_otp_expiry: expiresAt
-      })
-      .eq('id', userId);
-
-    const html = generate2FAOTPEmail(otp);
-    await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || 'ABYRA Store <security@yourdomain.com>',
-      to: cleanEmail,
-      subject: '🔐 Admin Login OTP — ABYRA',
-      html,
+    // 5. If 2FA is required, prepare the next step
+    console.log(`[AUTH] 2FA REQUIRED for ${cleanEmail}. Prompting for authenticator code.`);
+    
+    // We don't send Email OTP automatically anymore if Authenticator is enabled, 
+    // but we can if the user requests it. For now, we just signal that 2FA is needed.
+    res.json({ 
+      success: true, 
+      isAdmin: userData.role === 'admin', 
+      requires2FA: true,
+      method: userData.two_factor_enabled ? 'authenticator' : 'email' 
     });
 
-    res.json({ success: true, isAdmin: true, skip2FA: false });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('[AUTH] Login Start Error:', error);
+    res.status(500).json({ error: error.message || 'Authentication system error' });
   }
 });
 
@@ -1552,49 +1570,65 @@ app.post('/api/auth/admin/verify-email-otp', async (req: Request, res: Response)
   }
 });
 
-app.post('/api/auth/admin/verify-authenticator', async (req: Request, res: Response) => {
+app.post('/api/auth/2fa/login-verify', async (req: Request, res: Response) => {
   const { email, otp } = req.body;
+  console.log(`[2FA LOGIN-VERIFY] Attempt for: ${email}`);
+
   try {
     const cleanEmail = email.trim().toLowerCase();
     
     const { data: user, error } = await supabaseAdmin
       .from('users')
-      .select('id, two_factor_secret, two_factor_enabled')
+      .select('id, two_factor_secret, two_factor_enabled, role')
       .eq('email', cleanEmail)
       .single();
 
-    if (error || !user) return res.status(400).json({ error: 'User not found' });
-
-    let verified = false;
-    if (user.two_factor_enabled && user.two_factor_secret) {
-      const decryptedSecret = decrypt(user.two_factor_secret);
-      verified = speakeasy.totp.verify({
-        secret: decryptedSecret,
-        encoding: 'base32',
-        token: otp,
-        window: 1
-      });
-    } else {
-      // For testing or if 2FA not set up properly, but requirement says strict 2FA
-      return res.status(400).json({ error: '2FA is not enabled on this account' });
+    if (error || !user) {
+      console.warn(`[2FA LOGIN-VERIFY] User not found: ${cleanEmail}`);
+      return res.status(400).json({ error: 'User security profile not found' });
     }
 
-    if (!verified) return res.status(400).json({ error: 'Invalid authenticator code' });
+    if (!user.two_factor_enabled || !user.two_factor_secret) {
+      console.warn(`[2FA LOGIN-VERIFY] 2FA not enabled for: ${cleanEmail}`);
+      return res.status(400).json({ error: 'Two-step verification is not enabled on this account' });
+    }
 
-    const newDeviceToken = crypto.randomBytes(32).toString('hex');
-    const deviceExpiry = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
+    const decryptedSecret = decrypt(user.two_factor_secret);
+    const verified = speakeasy.totp.verify({
+      secret: decryptedSecret,
+      encoding: 'base32',
+      token: otp,
+      window: 2 // 60s window
+    });
 
-    await supabaseAdmin
-      .from('users')
-      .update({
-        admin_device_token: newDeviceToken,
-        admin_device_expiry: deviceExpiry
-      })
-      .eq('id', user.id);
+    if (!verified) {
+      console.warn(`[2FA LOGIN-VERIFY] INVALID OTP for: ${cleanEmail}`);
+      return res.status(400).json({ error: 'Invalid authenticator code. Please try again.' });
+    }
 
-    res.json({ success: true, deviceToken: newDeviceToken });
+    console.log(`[2FA LOGIN-VERIFY] SUCCESS for: ${cleanEmail}`);
+
+    // If admin, generate a trusted device token
+    let deviceToken = null;
+    if (user.role === 'admin') {
+      deviceToken = crypto.randomBytes(32).toString('hex');
+      const deviceExpiry = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
+
+      await supabaseAdmin
+        .from('users')
+        .update({
+          admin_device_token: deviceToken,
+          admin_device_expiry: deviceExpiry
+        })
+        .eq('id', user.id);
+      
+      console.log(`[2FA LOGIN-VERIFY] Generated trusted device token for admin: ${cleanEmail}`);
+    }
+
+    res.json({ success: true, deviceToken });
   } catch (error: any) {
-    res.status(500).json({ error: error.message });
+    console.error('[2FA LOGIN-VERIFY] CRITICAL ERROR:', error);
+    res.status(500).json({ error: error.message || 'Verification system failure' });
   }
 });
 
