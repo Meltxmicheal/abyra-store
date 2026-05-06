@@ -25,6 +25,7 @@ export const ProductDetail = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [canReview, setCanReview] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Combine product images and unique variant images for the carousel
   const allImages = useMemo(() => {
@@ -101,7 +102,10 @@ export const ProductDetail = () => {
           }
         }
       } finally {
-        if (isMounted) setGlobalLoading(false);
+        if (isMounted) {
+          setGlobalLoading(false);
+          setIsLoading(false);
+        }
       }
     };
 
@@ -164,6 +168,14 @@ export const ProductDetail = () => {
   };
 
 
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <LoadingAnimation />
+      </div>
+    );
+  }
 
   if (!product) {
     return (

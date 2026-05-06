@@ -19,6 +19,7 @@ interface AuthContextType {
   changePassword: (current: string, next: string) => Promise<{ success: boolean; error?: string }>;
   setGlobalLoading: (isLoading: boolean) => void;
   globalLoading: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 // ============================================================
@@ -238,6 +239,15 @@ export const Providers = ({ children }: { children: ReactNode }) => {
   const forgotPassword = (email: string) => supabaseAuthService.forgotPassword(email);
   const changePassword = async (_current: string, next: string) => supabaseAuthService.changePassword(next);
 
+  const refreshUser = async () => {
+    try {
+      const currentUser = await supabaseAuthService.getCurrentUser();
+      setUser(currentUser);
+    } catch (err) {
+      console.error('[Auth] Error refreshing user:', err);
+    }
+  };
+
   // -------------------------------------------------------
   // Cart actions
   // -------------------------------------------------------
@@ -306,6 +316,7 @@ export const Providers = ({ children }: { children: ReactNode }) => {
       changePassword,
       setGlobalLoading,
       globalLoading,
+      refreshUser,
     }}>
       <CartContext.Provider value={{
         cart,

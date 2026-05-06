@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const Profile = () => {
   const navigate = useNavigate();
-  const { user, isAuthenticated, isLoading, updateProfile, logout, changePassword } = useAuthContext();
+  const { user, isAuthenticated, isLoading, updateProfile, logout, changePassword, refreshUser } = useAuthContext();
   
   const [name, setName] = useState('');
   const [gender, setGender] = useState<User['gender']>('prefer_not_to_say');
@@ -281,8 +281,8 @@ export const Profile = () => {
         toast.success('Two-step verification enabled successfully');
         setShow2FAModal(false);
         setTwoFactorOTP(['', '', '', '', '', '']);
-        // Refresh profile to reflect changes
-        window.location.reload();
+        // Refresh profile to reflect changes without full reload
+        await refreshUser();
       } else {
         console.error("[2FA VERIFY] API Error:", data.error);
         toast.error(data.error || 'Invalid verification code');
@@ -334,7 +334,7 @@ export const Profile = () => {
         setShowDisable2FAModal(false);
         setDisablePassword('');
         // Refresh profile
-        window.location.reload();
+        await refreshUser();
       } else {
         console.error("[2FA DISABLE] API Error:", data.error);
         toast.error(data.error || 'Incorrect password');
