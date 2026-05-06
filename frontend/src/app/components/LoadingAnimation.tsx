@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 
-const LOGO_URL = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg';
+const LOGO_URL = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1777728351/Picsart_26-05-02_18-44-52-685_wqgy9v.png';
 
 export const LoadingAnimation = () => {
   return (
