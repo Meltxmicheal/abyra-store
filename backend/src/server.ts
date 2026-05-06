@@ -1174,14 +1174,24 @@ app.post('/api/auth/2fa/setup', async (req: Request, res: Response) => {
 
     // 2. Verify password before setup
     console.log('[2FA SETUP] Verifying password for account security...');
-    const { error: loginError } = await supabaseAdmin.auth.signInWithPassword({
-      email: user.email!,
-      password: password
-    });
+    
+    // Add a safety timeout for the auth call to prevent infinite hanging
+    const authResult = await Promise.race([
+      supabaseAdmin.auth.signInWithPassword({
+        email: user.email!,
+        password: password
+      }),
+      new Promise<any>((_, reject) => setTimeout(() => reject(new Error('AUTH_TIMEOUT')), 15000))
+    ]).catch(err => ({ error: err }));
+
+    const { error: loginError } = authResult;
 
     if (loginError) {
-      console.warn(`[2FA SETUP] Password verification failed for: ${user.email}`);
-      return res.status(401).json({ error: 'Incorrect password. Verification failed.' });
+      console.warn(`[2FA SETUP] Password verification failed or timed out for: ${user.email}`);
+      const errorMessage = loginError.message === 'AUTH_TIMEOUT' 
+        ? 'Verification timed out. Please try again.' 
+        : 'Incorrect password. Verification failed.';
+      return res.status(401).json({ error: errorMessage });
     }
     console.log('[2FA SETUP] Password verified successfully.');
 

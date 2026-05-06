@@ -25,19 +25,31 @@ interface ImageState {
 
 export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: ProductFormModalProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isDeletingCategory, setIsDeletingCategory] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
-      console.log("[ProductForm] Fetching categories for modal...");
-      categoryService.getAll().then(cats => {
-        console.log(`[ProductForm] Categories state updated with ${cats.length} items`);
-        setCategories(cats);
-      });
+      fetchCategories();
     }
   }, [isOpen]);
+
+  const fetchCategories = async () => {
+    console.log("[ProductForm] Fetching categories for modal...");
+    setIsCategoriesLoading(true);
+    try {
+      const cats = await categoryService.getAll();
+      console.log(`[ProductForm] Categories state updated with ${cats.length} items`);
+      setCategories(cats);
+    } catch (err) {
+      console.error("[ProductForm] Failed to fetch categories:", err);
+      toast.error("Failed to load categories");
+    } finally {
+      setIsCategoriesLoading(false);
+    }
+  };
 
   // Form State
   const [name, setName] = useState('');
@@ -381,6 +393,8 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
                   onChange={setCategory}
                   onAdd={handleAddCategory}
                   onDelete={(id) => setIsDeletingCategory(id)}
+                  isLoading={isCategoriesLoading}
+                  onRefresh={fetchCategories}
                   canAdd
                   canDelete
                   required

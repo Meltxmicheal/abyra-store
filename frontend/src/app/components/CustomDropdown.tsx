@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, X, Trash2, Plus } from 'lucide-react';
+import { ChevronDown, Search, X, Trash2, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface DropdownOption {
@@ -20,6 +20,8 @@ interface CustomDropdownProps {
   canAdd?: boolean;
   canDelete?: boolean;
   required?: boolean;
+  isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 export const CustomDropdown = ({
@@ -34,6 +36,8 @@ export const CustomDropdown = ({
   canAdd = false,
   canDelete = false,
   required = false,
+  isLoading = false,
+  onRefresh,
 }: CustomDropdownProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -97,9 +101,12 @@ export const CustomDropdown = ({
         }`}
       >
         <span className={selectedOption ? 'text-gray-900' : 'text-gray-400'}>
-          {selectedOption ? selectedOption.name : placeholder}
+          {isLoading ? 'Loading...' : selectedOption ? selectedOption.name : placeholder}
         </span>
-        <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180 text-purple-600' : ''}`} />
+        <div className="flex items-center space-x-2">
+          {isLoading && <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />}
+          <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180 text-purple-600' : ''}`} />
+        </div>
       </button>
 
       <AnimatePresence>
@@ -111,8 +118,8 @@ export const CustomDropdown = ({
             className="absolute z-50 w-full bg-white rounded-lg shadow-2xl border border-gray-100 overflow-hidden mt-1"
           >
             {searchable && !isAdding && (
-              <div className="p-3 border-b border-gray-50">
-                <div className="relative">
+              <div className="p-3 border-b border-gray-50 flex items-center space-x-2">
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
@@ -123,6 +130,20 @@ export const CustomDropdown = ({
                     autoFocus
                   />
                 </div>
+                {onRefresh && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRefresh();
+                    }}
+                    disabled={isLoading}
+                    className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                    title="Refresh list"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                )}
               </div>
             )}
 

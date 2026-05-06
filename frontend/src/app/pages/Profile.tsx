@@ -6,7 +6,8 @@ import { User as UserIcon, Mail, Phone, ShoppingBag, MapPin, LogOut, Key, Refres
 import { User } from '../utils/supabaseAuth';
 import { Avatar } from '../components/Avatar';
 import { CustomDropdown } from '../components/CustomDropdown';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
+import { supabase } from '../utils/supabase';
 
 export const Profile = () => {
   const navigate = useNavigate();
@@ -201,7 +202,7 @@ export const Profile = () => {
     console.log("[2FA SETUP] Starting 2FA setup flow...");
     setIs2FALoading(true);
     try {
-      const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       console.log("[2FA SETUP] Session retrieved, calling setup API...");
       
       const controller = new AbortController();
@@ -255,7 +256,7 @@ export const Profile = () => {
     console.log("[2FA VERIFY] Starting verification...");
     setIs2FALoading(true);
     try {
-      const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       console.log("[2FA VERIFY] Session retrieved, calling verify API...");
 
       const controller = new AbortController();
@@ -307,7 +308,7 @@ export const Profile = () => {
     console.log("[2FA DISABLE] Starting deactivation flow...");
     setIs2FALoading(true);
     try {
-      const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       console.log("[2FA DISABLE] Session retrieved, calling disable API...");
 
       const controller = new AbortController();
