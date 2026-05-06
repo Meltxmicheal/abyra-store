@@ -4,7 +4,7 @@ export const About = () => {
       <div className="max-w-4xl mx-auto px-4 py-16">
         <div className="text-center mb-12">
           <img 
-            src="https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1777728351/Picsart_26-05-02_18-44-52-685_wqgy9v.png" 
+            src="https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg" 
             alt="ABYRA STORE Official Logo" 
             loading="lazy"
             className="h-32 w-32 rounded-full object-cover mx-auto mb-6 shadow-xl shadow-purple-100"

@@ -178,7 +178,7 @@ export const Home = () => {
           "@type": "Store",
           "name": "ABYRA STORE",
           "description": "Premium Handcrafted Crochet Art and Artisanal Gifts",
-          "image": "https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1777728351/Picsart_26-05-02_18-44-52-685_wqgy9v.png",
+          "image": "https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg",
           "url": "https://abyrastore.com/",
           "telephone": "+910000000000",
           "address": {

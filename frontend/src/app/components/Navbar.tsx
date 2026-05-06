@@ -3,7 +3,7 @@ import { ShoppingCart, User, Search, Menu, X, LogOut, LayoutDashboard, UserCircl
 import { useState, useRef, useEffect } from 'react';
 import { useAuthContext } from './Providers';
 import { useCartContext } from './Providers';
-const logo = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1777728351/Picsart_26-05-02_18-44-52-685_wqgy9v.png';
+const logo = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg';
 import { motion, AnimatePresence } from 'motion/react';
 import { Avatar } from './Avatar';
 import { NotificationBell } from './NotificationBell';
