@@ -42,7 +42,13 @@ app.use(cors({
     
     const normalizedOrigin = origin.replace(/\/$/, '');
     
-    if (allowedOrigins.includes(normalizedOrigin)) {
+    const isAllowed = allowedOrigins.includes(normalizedOrigin) || 
+                     normalizedOrigin.endsWith('.meltazi.me') || 
+                     normalizedOrigin.endsWith('.vercel.app') ||
+                     normalizedOrigin.endsWith('.abyra.store') ||
+                     normalizedOrigin === 'https://abyra.store';
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.warn(`[CORS Block] Origin "${origin}" not allowed. Allowed list: ${allowedOrigins.join(', ')}`);
@@ -51,7 +57,7 @@ app.use(cors({
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Access-Control-Request-Method', 'Access-Control-Request-Headers'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   optionsSuccessStatus: 204
 }));
