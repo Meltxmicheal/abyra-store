@@ -1,7 +1,6 @@
-/**
- * ABYRA STORE — Master Email Templates
  * Premium branded UI with soft violet aesthetics
  */
+import { getFrontendUrl } from './urlHelper';
 
 const LOGO_URL = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1777728351/Picsart_26-05-02_18-44-52-685_wqgy9v.png';
 const PRIMARY_COLOR = '#5b2c83'; // Deep Violet
@@ -209,12 +208,13 @@ export function generate2FAOTPEmail(otp: string): string {
  * Specific template for OTP with "View OTP" button logic
  */
 export function generateOTPEmail(otp: string): string {
+  const baseUrl = getFrontendUrl();
   return generateBrandedEmail({
     title: 'Secure Access OTP',
     subtitle: 'Security Verification',
     content: `A request was made to access your ABYRA account. For your security, the OTP is protected. Click the button below to view your unique verification code on our secure page.`,
     buttonText: 'View Secure OTP',
-    actionLink: `${process.env.FRONTEND_URL}/verify-otp?code=${btoa(otp)}` // Simple encoding for demo
+    actionLink: `${baseUrl}/verify-otp?code=${Buffer.from(otp).toString('base64')}`
   });
 }
 
@@ -222,6 +222,7 @@ export function generateOTPEmail(otp: string): string {
  * Order Confirmation Template
  */
 export function generateOrderConfirmationEmail(orderId: string, total: number, receiptUrl?: string): string {
+  const baseUrl = getFrontendUrl();
   let content = `<p>Thank you for shopping with ABYRA! We've received your order and are currently preparing your handcrafted pieces. Your total payment of ₹${total.toLocaleString('en-IN')} has been received successfully.</p>`;
   
   if (receiptUrl) {
@@ -233,7 +234,7 @@ export function generateOrderConfirmationEmail(orderId: string, total: number, r
     subtitle: `Order #${orderId}`,
     content: content,
     buttonText: receiptUrl ? 'Download Receipt' : 'Continue Shopping',
-    actionLink: receiptUrl || `${process.env.FRONTEND_URL}`
+    actionLink: receiptUrl || `${baseUrl}/products`
   });
 }
 
@@ -241,12 +242,13 @@ export function generateOrderConfirmationEmail(orderId: string, total: number, r
  * Password Updated Template
  */
 export function generatePasswordUpdatedEmail(): string {
+  const baseUrl = getFrontendUrl();
   return generateBrandedEmail({
     title: 'Password Updated! ✅',
     subtitle: 'SECURITY ALERT',
     content: `Your ABYRA account password has been successfully updated. If you did not make this change, please contact our support team immediately.`,
     buttonText: 'Go to My Account',
-    actionLink: `${process.env.FRONTEND_URL}/profile`
+    actionLink: `${baseUrl}/profile`
   });
 }
 
@@ -283,6 +285,10 @@ export function generatePasswordResetOTPEmail(otp: string): string {
  * Account Verification Template
  */
 export function generateVerificationEmail(name: string, verificationLink: string): string {
+  // Ensure the link doesn't contain 'undefined' or localhost if it was generated with a broken env var
+  const safeLink = verificationLink.replace(/https?:\/\/undefined/g, getFrontendUrl())
+                                   .replace(/https?:\/\/localhost:\d+/g, getFrontendUrl());
+
   return generateBrandedEmail({
     title: 'Verify Your Email 📧',
     subtitle: 'ACTIVATE YOUR ACCOUNT',
@@ -291,6 +297,38 @@ export function generateVerificationEmail(name: string, verificationLink: string
       <p>Welcome to ABYRA! We're thrilled to have you on board. To start exploring our handcrafted collections and manage your orders, please verify your email address by clicking the button below.</p>
     `,
     buttonText: 'Verify My Email',
-    actionLink: verificationLink
+    actionLink: safeLink
+  });
+}
+
+/**
+ * Welcome Email Template
+ */
+export function generateWelcomeEmail(name: string): string {
+  const baseUrl = getFrontendUrl();
+  return generateBrandedEmail({
+    title: 'Welcome to ABYRA 💜',
+    subtitle: 'HANDCRAFTED WITH LOVE',
+    content: `
+      <p>Hi ${name},</p>
+      <p>We're so happy to have you in our community! ABYRA is all about the art of crochet and the beauty of handmade gifts. We can't wait for you to see our latest collections.</p>
+      <p>Start exploring our unique handcrafted bouquets and accessories today.</p>
+    `,
+    buttonText: 'Start Shopping',
+    actionLink: `${baseUrl}/products`
+  });
+}
+
+/**
+ * Admin Alert Template
+ */
+export function generateAdminAlertEmail(subject: string, message: string): string {
+  const baseUrl = getFrontendUrl();
+  return generateBrandedEmail({
+    title: '🚨 Admin Alert',
+    subtitle: subject.toUpperCase(),
+    content: `<p>${message}</p>`,
+    buttonText: 'Open Dashboard',
+    actionLink: `${baseUrl}/admin`
   });
 }

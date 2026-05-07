@@ -9,11 +9,22 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import hpp from 'hpp';
 import { createClient } from '@supabase/supabase-js';
-import { generateBrandedEmail, generateOTPEmail, generateOrderConfirmationEmail, generatePasswordResetOTPEmail, generateVerificationEmail, generatePasswordUpdatedEmail, generate2FAOTPEmail } from './utils/emailTemplates';
+import { 
+  generateBrandedEmail, 
+  generateOTPEmail, 
+  generateOrderConfirmationEmail, 
+  generatePasswordResetOTPEmail, 
+  generateVerificationEmail, 
+  generatePasswordUpdatedEmail, 
+  generate2FAOTPEmail,
+  generateWelcomeEmail,
+  generateAdminAlertEmail
+} from './utils/emailTemplates';
 import speakeasy from 'speakeasy';
 import QRCode from 'qrcode';
 import { encrypt, decrypt } from './utils/twoFactor';
 import { generateReceiptPDF, ReceiptData } from './utils/receiptGenerator';
+import { getFrontendUrl, getBackendUrl } from './utils/urlHelper';
 import fs from 'fs';
 
 dotenv.config();
@@ -187,7 +198,7 @@ async function generateAndSendReceipt(orderId: string, email: string, amount: nu
     console.log(`[FLOW] Starting post-payment flow for ${orderId}`);
     
     // 1. Generate Receipt (This also updates order with receipt_url)
-    const response = await fetch(`${process.env.APP_URL}/api/orders/${orderId}/receipt`, {
+    const response = await fetch(`${getBackendUrl()}/api/orders/${orderId}/receipt`, {
       method: 'POST'
     });
     
@@ -240,7 +251,7 @@ app.post('/api/email/welcome', async (req: Request, res: Response) => {
       subtitle: 'Joined the Family',
       content: `We're so happy to have you here. ABYRA is a place where every piece is handcrafted with care and premium materials. We can't wait for you to explore our collection of crochet bouquets, bags, and more.`,
       buttonText: 'Continue Shopping',
-      actionLink: `${process.env.FRONTEND_URL}`
+      actionLink: `${getFrontendUrl()}`
     });
 
     const { data, error } = await resend.emails.send({
@@ -366,7 +377,7 @@ app.post('/api/email/send-verification', async (req: Request, res: Response) => 
       type: 'invite',
       email: email,
       options: {
-        redirectTo: `${process.env.FRONTEND_URL}/verify-email`
+        redirectTo: `${getFrontendUrl()}/verify-email`
       }
     });
 
@@ -501,7 +512,7 @@ app.post('/api/email/cart-reminder', async (req: Request, res: Response) => {
       subtitle: 'Your Cart is Waiting',
       content: `Hi ${name}, we noticed you left some beautiful handcrafted items in your cart. They are selling fast, so don't miss out on making them yours!`,
       buttonText: 'Complete Your Purchase',
-      actionLink: `${process.env.FRONTEND_URL}/cart`
+      actionLink: `${getFrontendUrl()}/cart`
     });
 
     const data = await resend.emails.send({
@@ -525,7 +536,7 @@ app.post('/api/email/new-product', async (req: Request, res: Response) => {
       subtitle: productName,
       content: `Something special has just landed at ABYRA. ${productDescription}. Be the first to own this handcrafted masterpiece.`,
       buttonText: 'View New Product',
-      actionLink: `${process.env.FRONTEND_URL}/product/${productId}`
+      actionLink: `${getFrontendUrl()}/product/${productId}`
     });
 
     // In production, use Batch sending for all users
@@ -551,7 +562,7 @@ app.post('/api/email/receipt', async (req: Request, res: Response) => {
       subtitle: `Invoice for #${orderId}`,
       content: `Thank you for your purchase. You can now download the formal receipt for your order using the secure link below.`,
       buttonText: 'Download Receipt (PDF)',
-      actionLink: `${process.env.FRONTEND_URL}/receipt/${orderId}?download=true`
+      actionLink: `${getFrontendUrl()}/receipt/${orderId}?download=true`
     });
 
     const { data, error } = await resend.emails.send({
@@ -696,7 +707,7 @@ app.get('/api/receipt/:orderId', async (req: Request, res: Response) => {
       .single();
 
     if (error || !data?.receipt_url) {
-      return res.redirect(`${process.env.FRONTEND_URL}/orders`);
+      return res.redirect(`${getFrontendUrl()}/orders`);
     }
 
     res.redirect(data.receipt_url);
