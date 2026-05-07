@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuthContext } from '../components/Providers';
 import { toast } from 'sonner';
+import { API_URL } from '../utils/api';
 import { User as UserIcon, Mail, Phone, ShoppingBag, MapPin, LogOut, Key, RefreshCw, X, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2, Shield, Smartphone, Lock } from 'lucide-react';
 import { User } from '../utils/supabaseAuth';
 import { Avatar } from '../components/Avatar';
@@ -96,7 +97,7 @@ export const Profile = () => {
     setIsSending(true);
     try {
       const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/send-otp`, {
+      const response = await fetch(`${API_URL}/api/auth/send-otp`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -125,7 +126,7 @@ export const Profile = () => {
     setIsVerifying(true);
     setOtpError('');
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/verify-otp`, {
+      const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: user?.email, otp: otpString }),
@@ -161,7 +162,7 @@ export const Profile = () => {
     setGlobalLoading(true);
     try {
       const { data: { session } } = await (await import('../utils/supabase')).supabase.auth.getSession();
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/update-password`, {
+      const response = await fetch(`${API_URL}/api/auth/update-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,7 +175,6 @@ export const Profile = () => {
         }),
       });
       const data = await response.json();
-      console.log("[Profile] Update password response:", data);
 
       if (data.success) {
         toast.success('Password updated successfully');
@@ -190,47 +190,22 @@ export const Profile = () => {
       console.error("[Profile] Update password exception:", error);
       setPasswordError('Update failed');
     } finally {
-      console.log("[Profile] Resetting loading state");
       setGlobalLoading(false);
     }
   };
 
   const handleSetup2FA = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
     if (!enable2FAPassword) return;
-
-    console.log("[2FA SETUP] Starting 2FA setup flow...");
     setIs2FALoading(true);
     try {
-      console.log("[2FA SETUP] Attempting to retrieve session...");
-      
-      // Use a promise race for getSession to prevent infinite hang
-      const sessionResult = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 5000))
-      ]).catch(err => {
-        console.error("[2FA SETUP] Session retrieval failed:", err);
-        return { data: { session: null }, error: err };
-      });
-
-      const { data: { session }, error: sessionError } = sessionResult;
-
-      if (sessionError || !session) {
-        console.error("[2FA SETUP] No active session found:", sessionError);
-        toast.error('Session expired. Please log in again.');
-        setIs2FALoading(false);
-        return;
-      }
-      
-      console.log("[2FA SETUP] Session retrieved successfully. Calling backend setup API...");
+      const { data: { session } } = await supabase.auth.getSession();
       
       const controller = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.warn("[2FA SETUP] Backend request timed out after 25s");
         controller.abort();
       }, 25000);
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/setup`, {
+      const response = await fetch(`${API_URL}/api/auth/2fa/setup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -241,10 +216,8 @@ export const Profile = () => {
       });
       
       clearTimeout(timeoutId);
-      console.log("[2FA SETUP] API Response Status:", response.status);
 
       const data = await response.json();
-      console.log("[2FA SETUP] API Response Data:", data);
 
       if (data.success) {
         setTwoFactorSecret(data.secret);
@@ -266,7 +239,6 @@ export const Profile = () => {
         toast.error('Connection error during 2FA setup');
       }
     } finally {
-      console.log("[2FA SETUP] Flow complete, resetting loader");
       setIs2FALoading(false);
     }
   };
@@ -274,17 +246,14 @@ export const Profile = () => {
   const handleVerify2FA = async () => {
     const otp = twoFactorOTP.join('');
     if (otp.length < 6) return;
-
-    console.log("[2FA VERIFY] Starting verification...");
     setIs2FALoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("[2FA VERIFY] Session retrieved, calling verify API...");
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/verify`, {
+      const response = await fetch(`${API_URL}/api/auth/2fa/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -295,10 +264,8 @@ export const Profile = () => {
       });
       
       clearTimeout(timeoutId);
-      console.log("[2FA VERIFY] API Response Status:", response.status);
 
       const data = await response.json();
-      console.log("[2FA VERIFY] API Response Data:", data);
 
       if (data.success) {
         toast.success('Two-step verification enabled successfully');
@@ -318,25 +285,20 @@ export const Profile = () => {
         toast.error('Failed to verify 2FA code');
       }
     } finally {
-      console.log("[2FA VERIFY] Flow complete, resetting loader");
       setIs2FALoading(false);
     }
   };
 
   const handleDisable2FA = async (e: React.FormEvent) => {
-    e.preventDefault();
     if (!disablePassword) return;
-
-    console.log("[2FA DISABLE] Starting deactivation flow...");
     setIs2FALoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      console.log("[2FA DISABLE] Session retrieved, calling disable API...");
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/disable`, {
+      const response = await fetch(`${API_URL}/api/auth/2fa/disable`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -347,10 +309,8 @@ export const Profile = () => {
       });
       
       clearTimeout(timeoutId);
-      console.log("[2FA DISABLE] API Response Status:", response.status);
 
       const data = await response.json();
-      console.log("[2FA DISABLE] API Response Data:", data);
 
       if (data.success) {
         toast.success('Two-step verification disabled');
@@ -370,7 +330,6 @@ export const Profile = () => {
         toast.error('Failed to disable 2FA');
       }
     } finally {
-      console.log("[2FA DISABLE] Flow complete, resetting loader");
       setIs2FALoading(false);
     }
   };

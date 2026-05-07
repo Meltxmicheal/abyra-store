@@ -43,7 +43,7 @@ export const generateReceiptPDF = async (data: ReceiptData): Promise<string> => 
         .text('ABYRA STORE', 110, 57)
         .fontSize(10)
         .text('Handcrafted with Love', 110, 80)
-        .text('www.abyrastore.com', 110, 95)
+        .text('abyra-store.meltazi.me', 110, 95)
         .moveDown();
         
       // Line

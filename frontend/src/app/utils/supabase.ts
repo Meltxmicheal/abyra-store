@@ -1,9 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://hgayhvaskddmcetltkca.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhnYXlodmFza2RkbWNldGx0a2NhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc3ODg3OTMsImV4cCI6MjA5MzM2NDc5M30.dF74ituz1nuNxbUlfbOqUQR49wZmxUJ1cNvLhlJJYWo';
-
-console.log('[ABYRA] Supabase client created with hardcoded URL:', supabaseUrl);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 
 
@@ -57,16 +55,6 @@ export const supabase = createClient(
       // CRITICAL: Disable navigator locking to prevent NavigatorLockAcquireTimeoutError
       lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<any>) => await fn()
     },
-    global: {
-      fetch: (...args) => {
-        const url = typeof args[0] === 'string' ? args[0] : (args[0] as Request).url;
-        // Only log non-static asset fetches to keep console clean
-        if (!url.includes('.png') && !url.includes('.jpg') && !url.includes('.svg')) {
-          console.log(`[SUPABASE FETCH] ${url}`);
-        }
-        return fetch(...args);
-      }
-    }
   }
 );
 

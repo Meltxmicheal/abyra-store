@@ -53,18 +53,6 @@ export const productService = {
     product: Partial<Product> & { id?: string },
   ): Promise<Product | null> => {
     try {
-      console.log("[Product] Starting save operation for:", product.name);
-      console.log("[Product] Input data:", JSON.stringify({
-        id: product.id,
-        name: product.name,
-        category: product.category,
-        basePrice: product.basePrice,
-        discountEnabled: product.discountEnabled,
-        discountPrice: product.discountPrice,
-        imageCount: product.images?.length,
-        variantCount: product.variants?.length,
-      }));
-
       // 1. Find or create category
       let categoryId: string | null = null;
       if (product.category) {
@@ -81,20 +69,15 @@ export const productService = {
 
         if (cat) {
           categoryId = cat.id;
-          console.log("[Product] Found category ID:", categoryId);
         } else {
-          console.log("[Product] Category not found, creating:", product.category);
           const { data: newCat, error: createError } = await supabase
             .from("categories")
             .insert({ name: product.category })
             .select("id")
             .single();
 
-          if (createError) {
-            console.error("[Product] Category creation failed:", createError);
-          } else {
+          if (!createError) {
             categoryId = newCat.id;
-            console.log("[Product] Created category ID:", categoryId);
           }
         }
       }
@@ -119,63 +102,45 @@ export const productService = {
         payload.discount_price = null;
       }
 
-      console.log("[Product] DB payload:", JSON.stringify(payload));
-
       let savedProductData;
       if (product.id) {
         // UPDATE existing product
-        console.log("[Product] Updating existing product:", product.id);
         const { data, error } = await supabase
           .from("products")
           .update(payload)
           .eq("id", product.id)
           .select(`id`)
           .single();
-        if (error) {
-          console.error("[Product] UPDATE failed:", error.message, error.code, error.details, error.hint);
-          throw error;
-        }
+        if (error) throw error;
         savedProductData = data;
-        console.log("[Product] Update success, id:", savedProductData.id);
       } else {
         // INSERT new product
-        console.log("[Product] Inserting new product...");
         const { data, error } = await supabase
           .from("products")
           .insert(payload)
           .select(`id`)
           .single();
-        if (error) {
-          console.error("[Product] INSERT failed:", error.message, error.code, error.details, error.hint);
-          throw error;
-        }
+        if (error) throw error;
         savedProductData = data;
-        console.log("[Product] Insert success, id:", savedProductData.id);
       }
 
       const productId = savedProductData.id;
 
-      // 2. Sync product_images table (non-blocking — log errors but don't fail the save)
+      // 2. Sync product_images table (non-blocking)
       if (product.images && product.images.length > 0) {
-        console.log(`[Product] Syncing ${product.images.length} product images...`);
-        const { error: delImgErr } = await supabase.from("product_images").delete().eq("product_id", productId);
-        if (delImgErr) console.warn("[Product] Image delete warning:", delImgErr.message);
+        await supabase.from("product_images").delete().eq("product_id", productId);
 
         const imagesPayload = product.images.map((url, index) => ({
           product_id: productId,
           image_url: url,
           is_primary: index === 0,
         }));
-        const { error: imgError } = await supabase.from("product_images").insert(imagesPayload);
-        if (imgError) console.error("[Product] Image sync error:", imgError.message, imgError.code);
-        else console.log("[Product] Images synced successfully");
+        await supabase.from("product_images").insert(imagesPayload);
       }
 
-      // 3. Sync product_variants table (non-blocking — log errors but don't fail the save)
+      // 3. Sync product_variants table (non-blocking)
       if (product.variants && product.variants.length > 0) {
-        console.log(`[Product] Syncing ${product.variants.length} product variants...`);
-        const { error: delVarErr } = await supabase.from("product_variants").delete().eq("product_id", productId);
-        if (delVarErr) console.warn("[Product] Variant delete warning:", delVarErr.message);
+        await supabase.from("product_variants").delete().eq("product_id", productId);
 
         const variantsPayload = product.variants.map((v) => ({
           product_id: productId,
@@ -184,12 +149,8 @@ export const productService = {
           image_url: v.image || null,
           delivery_days: v.deliveryDays || 3,
         }));
-        const { error: varError } = await supabase.from("product_variants").insert(variantsPayload);
-        if (varError) console.error("[Product] Variant sync error:", varError.message, varError.code);
-        else console.log("[Product] Variants synced successfully");
+        await supabase.from("product_variants").insert(variantsPayload);
       }
-
-      console.log("[Product] Save complete! Product ID:", productId);
 
       // Fetch and return the full saved product
       const finalProduct = await productService.getById(productId);
@@ -248,18 +209,13 @@ export const productService = {
 export const categoryService = {
   getAll: async (): Promise<Category[]> => {
     try {
-      console.log("[Category] Fetching all categories...");
       const { data, error } = await supabase
         .from("categories")
         .select("id, name, image")
         .order("name");
       
-      if (error) {
-        console.error("[Category] Fetch error:", error.message, error.code, error.details);
-        return [];
-      }
+      if (error) return [];
       
-      console.log(`[Category] Successfully fetched ${data?.length || 0} categories`);
       return (data || []).map((c) => ({ 
         id: c.id, 
         name: c.name || "Unnamed", 
@@ -273,19 +229,14 @@ export const categoryService = {
 
   save: async (name: string): Promise<Category | null> => {
     try {
-      console.log(`[Category] Saving category: ${name}`);
       const { data, error } = await supabase
         .from("categories")
         .upsert({ name }, { onConflict: "name" })
         .select("id, name, image")
         .single();
       
-      if (error) {
-        console.error("[Category] Save error:", error.message, error.code, error.details);
-        return null;
-      }
+      if (error) return null;
 
-      console.log("[Category] Successfully saved:", data);
       return { id: data.id, name: data.name, image: data.image || "" };
     } catch (err) {
       console.error("[Category] Unexpected save error:", err);
@@ -325,13 +276,9 @@ export const cartService = {
         new Promise<any>((_, reject) => setTimeout(() => reject(new Error('CART_TIMEOUT')), 8000))
       ]);
       
-      if (error) {
-        console.warn("[Cart] Fetch error:", error.message);
-        return [];
-      }
+      if (error) return [];
       return (data?.items as any[]) || [];
     } catch (err: any) {
-      console.warn("[Cart] Failed to load cart (timed out or error):", err.message || err);
       return [];
     }
   },

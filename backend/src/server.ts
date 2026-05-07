@@ -166,7 +166,7 @@ async function generateAndSendReceipt(orderId: string, email: string, amount: nu
     console.log(`[FLOW] Starting post-payment flow for ${orderId}`);
     
     // 1. Generate Receipt (This also updates order with receipt_url)
-    const response = await fetch(`${process.env.BACKEND_URL}/api/orders/${orderId}/receipt`, {
+    const response = await fetch(`${process.env.APP_URL}/api/orders/${orderId}/receipt`, {
       method: 'POST'
     });
     

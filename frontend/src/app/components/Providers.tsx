@@ -70,7 +70,6 @@ export const Providers = ({ children }: { children: ReactNode }) => {
 
     // ONE-TIME RESET for corrupted sessions (v2)
     if (!localStorage.getItem('abyra_auth_reset_v2')) {
-      console.log('[Auth] Performing one-time corrupted session reset...');
       Object.keys(localStorage).forEach(key => {
         if (key.includes('supabase') || key.includes('sb-')) localStorage.removeItem(key);
       });
@@ -79,7 +78,6 @@ export const Providers = ({ children }: { children: ReactNode }) => {
 
     const handleSession = async (session: any, eventSource: string) => {
       if (!mounted) return;
-      console.log(`[Auth] Handling session from ${eventSource}...`);
       
       if (session?.user) {
         try {
@@ -87,7 +85,6 @@ export const Providers = ({ children }: { children: ReactNode }) => {
           if (mounted) {
             setUser(currentUser);
             if (currentUser) {
-              console.log(`[Auth] User active (${eventSource}):`, currentUser.email);
               loadCartFromDB(currentUser.id);
             }
           }
@@ -95,7 +92,6 @@ export const Providers = ({ children }: { children: ReactNode }) => {
           console.error(`[Auth] Error fetching user profile (${eventSource}):`, err);
         }
       } else {
-        console.log(`[Auth] No active session found (${eventSource})`);
         setUser(null);
         setCart([]);
         setCartCount(0);
@@ -108,7 +104,6 @@ export const Providers = ({ children }: { children: ReactNode }) => {
       if (isInitialized.current) return;
       isInitialized.current = true;
       
-      console.log('[Auth] Initializing application...');
       try {
         const { data: { session } } = await supabase.auth.getSession();
         await handleSession(session, 'INITIAL_GET_SESSION');
@@ -122,14 +117,11 @@ export const Providers = ({ children }: { children: ReactNode }) => {
 
     // Single source of truth for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[Auth] Event Triggered: ${event}`);
-      
       if (!mounted) return;
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         await handleSession(session, `EVENT_${event}`);
       } else if (event === 'SIGNED_OUT') {
-        console.log('[Auth] User signed out event');
         setUser(null);
         setCart([]);
         setCartCount(0);
@@ -152,13 +144,11 @@ export const Providers = ({ children }: { children: ReactNode }) => {
   // Cart helpers
   // -------------------------------------------------------
   const loadCartFromDB = async (userId: string) => {
-    console.log('[Cart] Loading from DB for:', userId);
     try {
       const dbCart = await cartService.get(userId);
       setCart(dbCart);
       setCartCount(dbCart.reduce((sum, item) => sum + item.quantity, 0));
     } catch (err) {
-      console.warn('[Cart] Load failed:', err);
       setCart([]);
       setCartCount(0);
     }

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { useAuthContext } from '../components/Providers';
 import { toast } from 'sonner';
+import { API_URL } from '../utils/api';
 import { Eye, EyeOff, RefreshCw, Shield, Smartphone, X, Loader2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import logo from '@/imports/1000182129.jpg';
@@ -43,7 +44,6 @@ export const Login = () => {
 
   useEffect(() => {
     // Proactive cleanup of any stale 2FA session data
-    console.log('[Login] Cleaning up stale authentication residue...');
     sessionStorage.removeItem('pending_2fa_email');
     sessionStorage.removeItem('temp_auth_token');
     sessionStorage.removeItem('pending2FA');
@@ -72,7 +72,7 @@ export const Login = () => {
     setTwoFactorError('');
     try {
       const deviceToken = localStorage.getItem('abyra_admin_device_token');
-      const startRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/admin/login-start`, {
+      const startRes = await fetch(`${API_URL}/api/auth/admin/login-start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: tempUser.email, password: tempUser.password, deviceToken })
@@ -109,8 +109,7 @@ export const Login = () => {
       // This prevents creating a Supabase session before 2FA is verified
       const deviceToken = localStorage.getItem('abyra_admin_device_token');
       
-      console.log('[Login] Verifying credentials and 2FA status via backend...');
-      const startRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/admin/login-start`, {
+      const startRes = await fetch(`${API_URL}/api/auth/admin/login-start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, password: cleanPassword, deviceToken })
@@ -132,13 +131,11 @@ export const Login = () => {
       // 2. Logic for 2FA
       // Only trigger 2FA step IF: requires2FA is explicitly true
       if (startData.requires2FA === true) {
-        console.log('[Login] 2FA required by backend, showing verification modal');
         setLoginStep('authenticator'); 
         setShow2FAModal(true);
       } 
       // If requires2FA is false or missing, complete login normally
       else {
-        console.log('[Login] No 2FA required (explicitly false or missing), proceeding with sign-in');
         await proceedWithLocalLogin(cleanEmail, cleanPassword);
       }
     } catch (err: any) {
@@ -165,7 +162,7 @@ export const Login = () => {
     setIs2FAVerifying(true);
     setTwoFactorError('');
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/send-fallback-otp`, {
+      const response = await fetch(`${API_URL}/api/auth/2fa/send-fallback-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: tempUser.email })
@@ -192,7 +189,7 @@ export const Login = () => {
     setIs2FAVerifying(true);
     setTwoFactorError('');
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/admin/verify-email-otp`, {
+      const response = await fetch(`${API_URL}/api/auth/admin/verify-email-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: tempUser.email, otp })
@@ -217,7 +214,7 @@ export const Login = () => {
     setIs2FAVerifying(true);
     setTwoFactorError('');
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/verify-fallback-otp`, {
+      const response = await fetch(`${API_URL}/api/auth/2fa/verify-fallback-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: tempUser.email, otp })
@@ -244,7 +241,7 @@ export const Login = () => {
     setIs2FAVerifying(true);
     setTwoFactorError('');
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/login-verify`, {
+      const response = await fetch(`${API_URL}/api/auth/2fa/login-verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: tempUser.email, otp })

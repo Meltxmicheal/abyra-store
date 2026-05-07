@@ -4,4 +4,4 @@ Disallow: /admin
 Disallow: /receipt/
 Disallow: /order-tracking/
 
-Sitemap: https://abyrastore.com/sitemap.xml
+Sitemap: https://abyra-store.meltazi.me/sitemap.xml

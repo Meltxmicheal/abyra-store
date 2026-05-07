@@ -4,7 +4,7 @@
 // ============================================================
 import { supabase } from './supabase';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { BACKEND_URL } from './api';
+import { API_URL } from './api';
 
 export interface User {
   id: string;
@@ -42,9 +42,7 @@ export const supabaseAuthService = {
     phoneNumber: string,
     gender: User['gender']
   ): Promise<{ success: boolean; user?: User; error?: string; needsVerification?: boolean }> => {
-    console.log("--- Signup started ---");
     try {
-      console.log("Calling supabase.auth.signUp...");
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password,
@@ -54,41 +52,27 @@ export const supabaseAuthService = {
         },
       });
 
-      console.log("Signup response data:", data);
-      console.log("Signup response error:", error);
-
       if (error) {
         return { success: false, error: error.message };
       }
 
       if (!data.user) {
-        console.warn("Signup success but no user returned");
         return { success: false, error: 'Registration failed. Please try again.' };
       }
 
-      console.log('[Auth] Signup auth success, user:', data.user.id);
-
-      // NOTE: We do NOT manually insert into public.users here.
-      // The database trigger `handle_new_user` does this automatically and
-      // safely (SECURITY DEFINER) when a new auth.users row is created.
-      // A manual upsert here would fail RLS since the user has no session yet
-      // (email confirmation is pending), causing the infinite loading bug.
-
       // Fire-and-forget: Send branded verification email via Resend.
-      // We deliberately do NOT await this — a slow email server must never
-      // block the signup success response.
-      fetch(`${BACKEND_URL}/api/email/send-verification`, {
+      fetch(`${API_URL}/api/email/send-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase(), name }),
-      }).catch((e) => console.warn('[Auth] Resend verification email failed (non-blocking):', e));
+      }).catch(() => {});
 
       // Trigger Welcome Email (Async/Fire-and-forget)
-      fetch(`${BACKEND_URL}/api/email/welcome`, {
+      fetch(`${API_URL}/api/email/welcome`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ to: email.trim().toLowerCase(), name }),
-      }).catch((e) => console.warn('[Auth] Welcome email failed (non-blocking):', e));
+      }).catch(() => {});
 
       return {
         success: true,
@@ -96,10 +80,7 @@ export const supabaseAuthService = {
         user: mapDbUser({ id: data.user.id, email, name, phone: phoneNumber, gender, role: 'user' }, data.user),
       };
     } catch (err: any) {
-      console.error("Unexpected error in signUp utility:", err);
       return { success: false, error: err.message || 'Registration failed' };
-    } finally {
-      console.log("--- Signup process finished ---");
     }
   },
 
@@ -108,33 +89,23 @@ export const supabaseAuthService = {
   // -------------------------------------------------------
   signIn: async (email: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> => {
     try {
-      console.log("--- Login started ---");
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
-      console.log("[Auth] Attempting Supabase auth.signInWithPassword...");
-      
-      const authStart = Date.now();
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: cleanPassword,
       });
-      console.log(`[Auth] signInWithPassword finished in ${Date.now() - authStart}ms`);
 
       if (error) {
-        console.error("[Auth] Login failed:", error.message);
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (err: any) {
-      console.error("[Auth] Exception during signIn:", err.message || err);
       return { success: false, error: err.message || 'Login failed' };
-    } finally {
-      console.log("--- Login process resolved ---");
     }
   },
-
 
   // -------------------------------------------------------
   // Sign Out
@@ -143,7 +114,6 @@ export const supabaseAuthService = {
     try {
       await supabase.auth.signOut();
     } catch (err) {
-      console.warn("Sign out encountered an issue, clearing session anyway", err);
       // Force clear local storage just in case
       if (typeof window !== 'undefined') {
         Object.keys(localStorage).forEach(key => {
@@ -158,13 +128,18 @@ export const supabaseAuthService = {
   // -------------------------------------------------------
   getCurrentUser: async (): Promise<User | null> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // Use a promise race for getSession to prevent infinite hang
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 5000))
+      ]).catch(() => ({ data: { session: null } }));
+
+      const session = sessionResult.data?.session;
       if (!session?.user) return null;
 
       const profileResult = await supabase.from('users').select('*').eq('id', session.user.id).single();
 
       if (profileResult.error) {
-        console.warn("getCurrentUser: Profile fetch failed, using fallback metadata", profileResult.error.message);
         const fallbackProfile = {
           id: session.user.id,
           email: session.user.email || '',
@@ -178,11 +153,9 @@ export const supabaseAuthService = {
 
       return mapDbUser(profileResult.data, session.user);
     } catch (err: any) {
-      console.error("getCurrentUser error:", err.message || err);
       return null;
     }
   },
-
 
   // -------------------------------------------------------
   // Update Profile
@@ -208,7 +181,6 @@ export const supabaseAuthService = {
       const { data: { session } } = await supabase.auth.getSession();
       return { success: true, user: mapDbUser(data, session?.user) };
     } catch (err: any) {
-      console.error('[Profile] updateProfile error:', err);
       return { success: false, error: err.message || 'Error updating profile' };
     }
   },
@@ -218,8 +190,7 @@ export const supabaseAuthService = {
   // -------------------------------------------------------
   forgotPassword: async (email: string): Promise<{ success: boolean; message: string }> => {
     try {
-      // We call our custom backend to send via Resend for better deliverability
-      const response = await fetch(`${BACKEND_URL}/api/email/reset-password`, {
+      const response = await fetch(`${API_URL}/api/email/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -252,15 +223,13 @@ export const supabaseAuthService = {
   // -------------------------------------------------------
   resendVerification: async (email: string): Promise<{ success: boolean; message: string }> => {
     try {
-      // First, trigger Supabase default (just in case they fixed it or for tracking)
       void supabase.auth.resend({
         type: 'signup',
         email: email.trim().toLowerCase(),
         options: { emailRedirectTo: `${window.location.origin}/verify-email` },
       });
 
-      // Then, trigger our premium Resend verification (Source of Truth for users)
-      const response = await fetch(`${BACKEND_URL}/api/email/send-verification`, {
+      const response = await fetch(`${API_URL}/api/email/send-verification`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -310,5 +279,4 @@ export const supabaseAuthService = {
   },
 };
 
-// Keep old name for gradual migration compatibility
 export { supabaseAuthService as authService };

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router';
 import { productService, reviewService } from '../utils/db';
 import type { Product, Variant } from '../utils/types';
@@ -7,6 +8,7 @@ import { LoadingAnimation } from '../components/LoadingAnimation';
 import { useAuthContext } from '../components/Providers';
 import { useCartContext } from '../components/Providers';
 import { toast } from 'sonner';
+import { FRONTEND_URL } from '../utils/api';
 import { Dialog, DialogContent } from '../components/ui/dialog';
 import { motion, AnimatePresence } from 'motion/react';
 import useEmblaCarousel from 'embla-carousel-react';
@@ -246,6 +248,26 @@ export const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50/50">
+      <Helmet>
+        {/* Basic Meta Tags */}
+        <title>{`${product.name} | ABYRA STORE`}</title>
+        <meta name="description" content={product.description?.replace(/[<>"]/g, '').substring(0, 160) || "Premium handcrafted crochet art from ABYRA STORE."} />
+
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="product" />
+        <meta property="og:url" content={`${FRONTEND_URL}/product/${product.id}`} />
+        <meta property="og:title" content={`${product.name} | ABYRA STORE`} />
+        <meta property="og:description" content={product.description?.replace(/[<>"]/g, '').substring(0, 160) || "Premium handcrafted crochet art from ABYRA STORE."} />
+        <meta property="og:image" content={selectedImage || product.images[0]} />
+        <meta property="og:site_name" content="ABYRA STORE" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={`${FRONTEND_URL}/product/${product.id}`} />
+        <meta name="twitter:title" content={`${product.name} | ABYRA STORE`} />
+        <meta name="twitter:description" content={product.description?.replace(/[<>"]/g, '').substring(0, 160) || "Premium handcrafted crochet art from ABYRA STORE."} />
+        <meta name="twitter:image" content={selectedImage || product.images[0]} />
+      </Helmet>
       {/* Breadcrumbs */}
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="flex items-center space-x-2 text-xs font-black text-gray-400 uppercase tracking-widest">
@@ -525,7 +547,7 @@ export const ProductDetail = () => {
             },
             "offers": {
               "@type": "Offer",
-              "url": `https://abyrastore.com/product/${product.id}`,
+              "url": `${FRONTEND_URL}/product/${product.id}`,
               "priceCurrency": "INR",
               "price": product.discountEnabled ? product.discountPrice : product.basePrice,
               "availability": "https://schema.org/InStock",

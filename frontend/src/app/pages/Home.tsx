@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { Helmet } from 'react-helmet-async';
 import { productService } from '../utils/db';
 import type { Product } from '../utils/types';
 import { ProductCard } from '../components/ProductCard';
@@ -8,6 +9,7 @@ import { motion } from 'motion/react';
 import heroImage from '@/imports/hero_crochet.png';
 import { useState, useEffect } from 'react';
 import { useAuthContext } from '../components/Providers';
+import { FRONTEND_URL } from '../utils/api';
 
 export const Home = () => {
   const { setGlobalLoading } = useAuthContext();
@@ -41,6 +43,21 @@ export const Home = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <Helmet>
+        <title>ABYRA STORE | Premium Handcrafted Crochet Art</title>
+        <meta name="description" content="Discover ABYRA STORE - Your destination for exquisite handcrafted crochet bouquets, unique accessories, and personalized gifts. Timeless art made by hand." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={FRONTEND_URL} />
+        <meta property="og:title" content="ABYRA STORE | Premium Handcrafted Crochet Art" />
+        <meta property="og:description" content="Discover exquisite handcrafted crochet bouquets and unique artisanal gifts. Timeless art made by hand." />
+        <meta property="og:image" content="https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg" />
+        <meta property="og:site_name" content="ABYRA STORE" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={FRONTEND_URL} />
+        <meta name="twitter:title" content="ABYRA STORE | Premium Handcrafted Crochet Art" />
+        <meta name="twitter:description" content="Discover exquisite handcrafted crochet bouquets and unique artisanal gifts. Timeless art made by hand." />
+        <meta name="twitter:image" content="https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg" />
+      </Helmet>
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-[#FAF9F6] py-12 md:py-20 px-4">
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
@@ -179,7 +196,7 @@ export const Home = () => {
           "name": "ABYRA STORE",
           "description": "Premium Handcrafted Crochet Art and Artisanal Gifts",
           "image": "https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg",
-          "url": "https://abyrastore.com/",
+          "url": `${FRONTEND_URL}/`,
           "telephone": "+910000000000",
           "address": {
             "@type": "PostalAddress",

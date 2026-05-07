@@ -37,14 +37,11 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
   }, [isOpen]);
 
   const fetchCategories = async () => {
-    console.log("[ProductForm] Fetching categories for modal...");
     setIsCategoriesLoading(true);
     try {
       const cats = await categoryService.getAll();
-      console.log(`[ProductForm] Categories state updated with ${cats.length} items`);
       setCategories(cats);
     } catch (err) {
-      console.error("[ProductForm] Failed to fetch categories:", err);
       toast.error("Failed to load categories");
     } finally {
       setIsCategoriesLoading(false);
@@ -90,7 +87,6 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
 
   const handleAddCategory = async (name: string) => {
     try {
-      console.log(`[Category] Adding category: ${name}`);
       const saved = await categoryService.save(name);
       
       if (!saved) {
@@ -98,16 +94,11 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
         return;
       }
 
-      console.log("[Category] Successfully saved:", saved);
-      
       const updated = await categoryService.getAll();
-      console.log("[Category] All categories after update:", updated);
-      
       setCategories(updated);
       setCategory(saved.name); // Use the name from DB to ensure consistency
       toast.success(`Category "${saved.name}" added successfully`);
     } catch (error) {
-      console.error("[Category] Error adding category:", error);
       toast.error('Failed to add category');
     }
   };
@@ -212,11 +203,9 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
     try {
       const compressed = await cloudinaryService.compressImage(file);
       const result = await cloudinaryService.uploadToCloudinary(compressed);
-      console.log('[Variant] Upload success:', result.url);
       updateVariant(variantId, { image: result.url });
       toast.success('Variant image uploaded!');
     } catch (error: any) {
-      console.error('[Variant] Upload failed:', error);
       toast.error(`Variant image upload failed: ${error.message || 'Unknown error'}`);
       updateVariant(variantId, { image: undefined });
     }
@@ -246,7 +235,6 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
       const saveResult = await Promise.race([
         (async () => {
           // ── STEP 1: Upload images to Cloudinary ──
-          console.log("[ProductForm] Step 1: Uploading images to Cloudinary...");
           const finalImageUrls: string[] = [];
           const updatedImages = [...images];
 
@@ -254,24 +242,15 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
             const img = updatedImages[i];
 
             if (img.file) {
-              console.log(`[ProductForm] Processing image ${i + 1}/${updatedImages.length}: ${img.file.name}`);
               setImages(prev => prev.map((curr, idx) => idx === i ? { ...curr, isUploading: true } : curr));
-
               const compressed = await cloudinaryService.compressImage(img.file);
-              console.log(`[ProductForm] Compressed image ${i + 1}`);
-
               const result = await cloudinaryService.uploadToCloudinary(compressed);
-              console.log(`[ProductForm] Uploaded image ${i + 1}:`, result.url);
               finalImageUrls.push(result.url);
-
               updatedImages[i] = { url: result.url };
             } else {
-              console.log(`[ProductForm] Image ${i + 1} already uploaded:`, img.url);
               finalImageUrls.push(img.url);
             }
           }
-
-          console.log(`[ProductForm] Step 1 complete: ${finalImageUrls.length} image URLs ready`);
 
           // ── STEP 2: Build product payload ──
           const productPayload = {
@@ -287,19 +266,9 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
             productionTime: product?.productionTime || 7,
             paymentMethods: product?.paymentMethods || ['UPI', 'Card', 'COD'],
           };
-          console.log("[ProductForm] Step 2: Product payload built:", JSON.stringify({
-            name: productPayload.name,
-            category: productPayload.category,
-            basePrice: productPayload.basePrice,
-            imageCount: productPayload.images.length,
-            variantCount: productPayload.variants.length,
-          }));
 
           // ── STEP 3: Save product to database ──
-          console.log("[ProductForm] Step 3: Calling productService.save()...");
           const savedProduct = await productService.save(productPayload);
-          console.log("[ProductForm] Step 3 result:", savedProduct ? `Success (ID: ${savedProduct.id})` : "FAILED (null)");
-
           return savedProduct;
         })(),
         // 60-second timeout safety net
@@ -310,13 +279,11 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
 
       // ── STEP 4: Handle result ──
       if (!saveResult) {
-        console.error("[ProductForm] Step 4: Product save returned null — DB insert likely failed");
         toast.error('Failed to save product to database. Check console for details.');
         return;
       }
 
       // ── STEP 5: Success ──
-      console.log("[ProductForm] ===== SAVE COMPLETE =====", saveResult.id);
       toast.success(product ? 'Product updated successfully!' : 'Product added successfully!');
       onSuccess();
       onClose();
