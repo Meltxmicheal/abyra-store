@@ -2,7 +2,7 @@
  */
 import { getFrontendUrl } from './urlHelper';
 
-const LOGO_URL = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1777728351/Picsart_26-05-02_18-44-52-685_wqgy9v.png';
+const LOGO_URL = 'https://res.cloudinary.com/dze1d3uen/image/upload/q_auto/f_auto/v1778080269/sgtzcvsm6uvuc4oasne0.jpg';
 const PRIMARY_COLOR = '#5b2c83'; // Deep Violet
 const BG_COLOR = '#f6f3f9'; // Soft Violet Background
 
@@ -107,9 +107,11 @@ export function generateBrandedEmail(options: TemplateOptions): string {
       border-radius: 14px;
       font-size: 16px;
       font-weight: 700;
-      text-decoration: none;
+      text-decoration: none !important;
       transition: all 0.3s ease;
       box-shadow: 0 4px 14px rgba(91, 44, 131, 0.4);
+      mso-padding-alt: 0;
+      text-underline-color: ${PRIMARY_COLOR};
     }
 
     .footer {
@@ -154,7 +156,12 @@ export function generateBrandedEmail(options: TemplateOptions): string {
       
       <div class="content-area">
         <div class="logo-container">
-          <img src="${LOGO_URL}" alt="ABYRA" class="logo">
+          <img 
+            src="${LOGO_URL}" 
+            alt="ABYRA" 
+            width="120" 
+            style="display:block; margin:0 auto; border:0; outline:none; text-decoration:none;"
+          >
         </div>
 
         <h1>${title}</h1>
@@ -165,7 +172,7 @@ export function generateBrandedEmail(options: TemplateOptions): string {
         </div>
 
         ${buttonText && actionLink ? `
-          <a href="${actionLink}" class="cta-button">
+          <a href="${actionLink}" class="cta-button" style="display: inline-block; background-color: ${PRIMARY_COLOR}; color: #ffffff !important; padding: 16px 40px; border-radius: 14px; font-size: 16px; font-weight: 700; text-decoration: none !important; box-shadow: 0 4px 14px rgba(91, 44, 131, 0.4);">
             ${buttonText}
           </a>
         ` : ''}
