@@ -22,30 +22,45 @@ const app = express();
 const port = process.env.PORT || 5000;
 console.log(`[SYSTEM] Starting backend server... (Environment variables reloaded)`);
 
-app.use(helmet()); // Secure HTTP headers
-app.use(hpp()); // Prevent HTTP Parameter Pollution
+// 1. CORS Configuration
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim().replace(/\/$/, ''))
+  .filter(o => o.length > 0);
 
-// CORS — reads ALLOWED_ORIGINS env var (comma-separated) in production.
-// Falls back to localhost origins for local development.
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174'];
-
-if (process.env.NODE_ENV === 'production' && !process.env.ALLOWED_ORIGINS) {
-  console.error('[SECURITY] ALLOWED_ORIGINS must be set in production!');
+// Default development origins
+if (allowedOrigins.length === 0) {
+  allowedOrigins.push('http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174');
 }
+
+console.log(`[CORS] Active Allowed Origins:`, allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (curl, Postman, server-to-server)
+    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    console.warn(`[CORS] Blocked request from: ${origin}`);
-    return callback(new Error(`CORS: origin ${origin} not allowed`));
+    
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      callback(null, true);
+    } else {
+      console.warn(`[CORS Block] Origin "${origin}" not allowed. Allowed list: ${allowedOrigins.join(', ')}`);
+      callback(null, false);
+    }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 204
 }));
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false, // Disable CSP for API to prevent interference with cross-origin requests if needed
+})); 
+app.use(hpp()); 
 app.use(express.json());
 
 // Rate Limiting
