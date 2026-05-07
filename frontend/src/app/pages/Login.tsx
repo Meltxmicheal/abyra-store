@@ -42,6 +42,20 @@ export const Login = () => {
   }, [isAuthenticated, user, navigate, from, show2FAModal]);
 
   useEffect(() => {
+    // Proactive cleanup of any stale 2FA session data
+    console.log('[Login] Cleaning up stale authentication residue...');
+    sessionStorage.removeItem('pending_2fa_email');
+    sessionStorage.removeItem('temp_auth_token');
+    sessionStorage.removeItem('pending2FA');
+    sessionStorage.removeItem('otp_verified');
+    localStorage.removeItem('pending_setup');
+    
+    // Clear any local error states
+    setError('');
+    setTwoFactorError('');
+  }, []);
+
+  useEffect(() => {
     let interval: any;
     if ((loginStep === 'email_otp' || loginStep === 'admin_email_otp') && resendTimer > 0) {
       interval = setInterval(() => {
@@ -106,6 +120,7 @@ export const Login = () => {
       console.log('[Login] Backend response:', startData);
 
       if (!startRes.ok) {
+        console.warn('[Login] Authentication pre-check failed:', startData.error);
         setError(startData.error || 'Invalid email or password');
         toast.error(startData.error || 'Invalid email or password');
         setLoading(false);
@@ -115,15 +130,15 @@ export const Login = () => {
       setTempUser({ email: cleanEmail, password: cleanPassword });
 
       // 2. Logic for 2FA
-      // If 2FA is required (admin forced or user enabled)
-      if (startData.requires2FA) {
-        console.log('[Login] 2FA required, showing verification modal');
-        setLoginStep('authenticator'); // Default to authenticator if 2FA enabled
+      // Only trigger 2FA step IF: requires2FA is explicitly true
+      if (startData.requires2FA === true) {
+        console.log('[Login] 2FA required by backend, showing verification modal');
+        setLoginStep('authenticator'); 
         setShow2FAModal(true);
       } 
-      // Otherwise, proceed to local login
+      // If requires2FA is false or missing, complete login normally
       else {
-        console.log('[Login] No 2FA required, proceeding with sign-in');
+        console.log('[Login] No 2FA required (explicitly false or missing), proceeding with sign-in');
         await proceedWithLocalLogin(cleanEmail, cleanPassword);
       }
     } catch (err: any) {

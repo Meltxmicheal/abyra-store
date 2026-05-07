@@ -1408,36 +1408,6 @@ app.post('/api/auth/2fa/verify-fallback-otp', async (req: Request, res: Response
 });
 
 // Verify 2FA during Login
-app.post('/api/auth/2fa/login-verify', async (req: Request, res: Response) => {
-  const { email, otp } = req.body;
-  try {
-    const { data, error } = await supabaseAdmin
-      .from('users')
-      .select('id, two_factor_secret, two_factor_enabled')
-      .eq('email', email)
-      .single();
-
-    if (error || !data || !data.two_factor_enabled) {
-      return res.status(400).json({ error: '2FA not enabled for this account' });
-    }
-
-    const decryptedSecret = decrypt(data.two_factor_secret);
-    const verified = speakeasy.totp.verify({
-      secret: decryptedSecret,
-      encoding: 'base32',
-      token: otp,
-      window: 1
-    });
-
-    if (verified) {
-      res.json({ success: true, message: 'Verification successful' });
-    } else {
-      res.status(400).json({ success: false, error: 'Invalid verification code' });
-    }
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-});
 
 // Disable 2FA
 app.post('/api/auth/2fa/disable', async (req: Request, res: Response) => {
@@ -1525,24 +1495,27 @@ app.post('/api/auth/admin/login-start', async (req: Request, res: Response) => {
     }
 
     // 4. Determine if 2FA is required
-    // Always require 2FA for admins if enabled, or if they haven't bypassed via trusted device
-    const requires2FA = (userData.role === 'admin' || userData.two_factor_enabled) && !skip2FA;
+    // Explicitly check for true to avoid truthy pitfalls
+    const is2FAEnabled = userData.two_factor_enabled === true;
+    const requires2FA = is2FAEnabled && !skip2FA;
 
     if (!requires2FA) {
-      console.log(`[AUTH] No 2FA required for ${cleanEmail}. Proceeding.`);
-      return res.json({ success: true, isAdmin: userData.role === 'admin', requires2FA: false });
+      console.log(`[AUTH] Login success for ${cleanEmail}. No 2FA required (Enabled: ${is2FAEnabled}, Skip: ${skip2FA})`);
+      return res.json({ 
+        success: true, 
+        isAdmin: userData.role === 'admin', 
+        requires2FA: false 
+      });
     }
 
     // 5. If 2FA is required, prepare the next step
     console.log(`[AUTH] 2FA REQUIRED for ${cleanEmail}. Prompting for authenticator code.`);
     
-    // We don't send Email OTP automatically anymore if Authenticator is enabled, 
-    // but we can if the user requests it. For now, we just signal that 2FA is needed.
     res.json({ 
       success: true, 
       isAdmin: userData.role === 'admin', 
       requires2FA: true,
-      method: userData.two_factor_enabled ? 'authenticator' : 'email' 
+      method: 'authenticator' 
     });
 
   } catch (error: any) {
