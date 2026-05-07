@@ -1,3 +1,5 @@
+/**
+ * ABYRA STORE — Master Email Templates
  * Premium branded UI with soft violet aesthetics
  */
 import { getFrontendUrl } from './urlHelper';
