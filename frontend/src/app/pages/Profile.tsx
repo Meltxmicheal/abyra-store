@@ -202,11 +202,33 @@ export const Profile = () => {
     console.log("[2FA SETUP] Starting 2FA setup flow...");
     setIs2FALoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log("[2FA SETUP] Session retrieved, calling setup API...");
+      console.log("[2FA SETUP] Attempting to retrieve session...");
+      
+      // Use a promise race for getSession to prevent infinite hang
+      const sessionResult = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 5000))
+      ]).catch(err => {
+        console.error("[2FA SETUP] Session retrieval failed:", err);
+        return { data: { session: null }, error: err };
+      });
+
+      const { data: { session }, error: sessionError } = sessionResult;
+
+      if (sessionError || !session) {
+        console.error("[2FA SETUP] No active session found:", sessionError);
+        toast.error('Session expired. Please log in again.');
+        setIs2FALoading(false);
+        return;
+      }
+      
+      console.log("[2FA SETUP] Session retrieved successfully. Calling backend setup API...");
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+      const timeoutId = setTimeout(() => {
+        console.warn("[2FA SETUP] Backend request timed out after 25s");
+        controller.abort();
+      }, 25000);
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/auth/2fa/setup`, {
         method: 'POST',
