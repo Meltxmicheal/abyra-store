@@ -92,7 +92,7 @@ export const productService = {
         images: product.images || [],
         variants: product.variants || [],
         production_time: product.productionTime ?? 7,
-        payment_methods: product.paymentMethods || ['UPI', 'Card', 'COD'],
+        payment_methods: product.paymentMethods || { cod: true, upi: true, cards: true, netbanking: true, wallets: true },
       };
 
       // Only set discount_price when discount is enabled and value is valid
@@ -169,7 +169,7 @@ export const productService = {
           images: product.images || [],
           variants: product.variants || [],
           productionTime: product.productionTime || 7,
-          paymentMethods: product.paymentMethods || ['UPI', 'Card', 'COD'],
+          paymentMethods: product.paymentMethods || { cod: true, upi: true, cards: true, netbanking: true, wallets: true },
           rating: 0,
           reviews: [],
         };
@@ -463,7 +463,24 @@ export const orderService = {
       }
     }
 
-    // 2. Price Integrity Check: Recalculate total from database prices
+    // 2. Payment Method Validation: Ensure all products allow the selected method
+    for (const item of cartItems) {
+      const pm = item.product.paymentMethods || { cod: true, upi: true, cards: true, netbanking: true, wallets: true };
+      if (paymentMethod === 'COD' && !pm.cod) {
+        console.error(`[db.ts] Security Error: COD not allowed for product ${item.product.name}`);
+        return null;
+      }
+      if (paymentMethod === 'UPI' && !pm.upi && !pm.netbanking && !pm.wallets) {
+        console.error(`[db.ts] Security Error: UPI/Online not allowed for product ${item.product.name}`);
+        return null;
+      }
+      if (paymentMethod === 'Card' && !pm.cards) {
+        console.error(`[db.ts] Security Error: Card not allowed for product ${item.product.name}`);
+        return null;
+      }
+    }
+
+    // 3. Price Integrity Check: Recalculate total from database prices
     const productIds = cartItems.map(i => i.productId);
     const { data: dbProducts } = await supabase
       .from("products")
@@ -556,7 +573,7 @@ export const orderService = {
   getById: async (orderId: string): Promise<Order | null> => {
     const { data: order, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*)`)
+      .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images)), users(name, email)`)
       .eq("id", orderId)
       .single();
 
@@ -567,7 +584,7 @@ export const orderService = {
   getUserOrders: async (userId: string): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*)`)
+      .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images))`)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -578,7 +595,7 @@ export const orderService = {
   getAllOrders: async (): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*), users(name, email)`)
+      .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images)), users(name, email)`)
       .order("created_at", { ascending: false });
 
     if (error || !data) return [];
@@ -845,7 +862,7 @@ export const orderService = {
         async (payload) => {
           const { data } = await supabase
             .from("orders")
-            .select(`*, order_items(*)`)
+            .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images))`)
             .eq("id", orderId)
             .single();
           if (data) callback(mapOrderFromDB(data));
@@ -1211,7 +1228,7 @@ function mapProduct(row: any): Product {
     images: images,
     variants: variants,
     productionTime: row.production_time || 7,
-    paymentMethods: row.payment_methods || ["UPI", "Card", "COD"],
+    paymentMethods: row.payment_methods || { cod: true, upi: true, cards: true, netbanking: true, wallets: true },
     rating: row.rating || 0,
     reviews: [],
   };
@@ -1251,29 +1268,35 @@ function mapOrderFromDB(row: any): Order {
   const address = (row.address || {}) as any;
   const items: CartItem[] = (row.order_items || []).map((oi: any) => {
     const snapshot = (oi.product_snapshot || {}) as any;
+    const productName = snapshot.name?.trim() || oi.products?.name?.trim() || "Product Info Unavailable";
+    const productImages = snapshot.images || oi.products?.images || [];
+    const productCategory = snapshot.category || oi.products?.category || "";
+    const productBasePrice = snapshot.basePrice || oi.price || 0;
+    const productVariant = snapshot.variant || {
+      id: oi.variant_id,
+      name: snapshot.variant?.name || "",
+      price: oi.price,
+      attributes: snapshot.variant?.attributes || {},
+    };
+
     return {
       productId: oi.product_id || snapshot.id,
       variantId: oi.variant_id,
       quantity: oi.quantity,
       product: {
         id: snapshot.id || oi.product_id,
-        name: snapshot.name || "",
-        images: snapshot.images || [],
-        category: snapshot.category || "",
-        basePrice: snapshot.basePrice || oi.price,
+        name: productName,
+        images: productImages,
+        category: productCategory,
+        basePrice: productBasePrice,
         variants: [],
-        productionTime: 7,
-        paymentMethods: [],
-        rating: 0,
-        reviews: [],
-        description: "",
+        productionTime: snapshot.productionTime || 7,
+        paymentMethods: snapshot.paymentMethods || { cod: true, upi: true, cards: true, netbanking: true, wallets: true },
+        rating: snapshot.rating || 0,
+        reviews: snapshot.reviews || [],
+        description: snapshot.description || "",
       },
-      variant: snapshot.variant || {
-        id: oi.variant_id,
-        name: "",
-        price: oi.price,
-        attributes: {},
-      },
+      variant: productVariant,
     };
   });
 

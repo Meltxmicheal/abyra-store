@@ -68,14 +68,6 @@ export const Providers = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // ONE-TIME RESET for corrupted sessions (v2)
-    if (!localStorage.getItem('abyra_auth_reset_v2')) {
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('supabase') || key.includes('sb-')) localStorage.removeItem(key);
-      });
-      localStorage.setItem('abyra_auth_reset_v2', 'true');
-    }
-
     const handleSession = async (session: any, eventSource: string) => {
       if (!mounted) return;
       

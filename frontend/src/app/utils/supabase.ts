@@ -5,16 +5,18 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 
 
-// Custom storage that falls back to memory if localStorage is blocked
+// Custom storage that prefers localStorage, falls back to sessionStorage, and only uses in-memory storage as last resort.
 const memoryStorage: { [key: string]: string } = {};
 const customStorage = {
   getItem: (key: string): string | null => {
     try {
       if (typeof window !== 'undefined') {
-        return window.localStorage.getItem(key);
+        const value = window.localStorage.getItem(key);
+        if (value !== null) return value;
+        return window.sessionStorage.getItem(key);
       }
     } catch (e) {
-      // localStorage is blocked (e.g. by Tracking Prevention)
+      // localStorage/sessionStorage may be blocked
     }
     return memoryStorage[key] || null;
   },
@@ -25,7 +27,14 @@ const customStorage = {
         return;
       }
     } catch (e) {
-      // localStorage is blocked
+      try {
+        if (typeof window !== 'undefined') {
+          window.sessionStorage.setItem(key, value);
+          return;
+        }
+      } catch {
+        // sessionStorage may also be blocked
+      }
     }
     memoryStorage[key] = value;
   },
@@ -33,10 +42,11 @@ const customStorage = {
     try {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(key);
+        window.sessionStorage.removeItem(key);
         return;
       }
     } catch (e) {
-      // localStorage is blocked
+      // localStorage/sessionStorage may be blocked
     }
     delete memoryStorage[key];
   }
@@ -89,7 +99,7 @@ export interface Database {
           images: string[];
           variants: Json;
           production_time: number;
-          payment_methods: string[];
+          payment_methods: Json;
           rating: number;
           created_at: string;
         };
