@@ -129,9 +129,10 @@ export const supabaseAuthService = {
   getCurrentUser: async (): Promise<User | null> => {
     try {
       // Use a promise race for getSession to prevent infinite hang
+      // Increased timeout to 15s for better reliability on slow networks
       const sessionResult = await Promise.race([
         supabase.auth.getSession(),
-        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 5000))
+        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 15000))
       ]).catch(() => ({ data: { session: null } }));
 
       const session = sessionResult.data?.session;
@@ -264,15 +265,20 @@ export const supabaseAuthService = {
   // -------------------------------------------------------
   onAuthStateChange: (callback: (user: User | null) => void) => {
     return supabase.auth.onAuthStateChange(async (event, session) => {
+      // Ignore some events that don't change the session state meaningfully
+      if (event === 'MFA_CHALLENGE') return;
+
       if (!session?.user) {
         callback(null);
         return;
       }
+
+      // If we have a session, fetch the profile
       const { data: profile } = await supabase
         .from('users')
         .select('*')
         .eq('id', session.user.id)
-        .single();
+        .maybeSingle();
 
       callback(profile ? mapDbUser(profile, session.user) : null);
     });

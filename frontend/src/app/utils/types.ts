@@ -20,6 +20,14 @@ export interface Review {
   adminReply?: string;
 }
 
+export interface PaymentMethods {
+  cod: boolean;
+  upi: boolean;
+  cards: boolean;
+  netbanking: boolean;
+  wallets: boolean;
+}
+
 export interface Product {
 
   id: string;
@@ -32,7 +40,7 @@ export interface Product {
   discountPrice?: number;
   discountEnabled?: boolean;
   productionTime: number;
-  paymentMethods: string[];
+  paymentMethods: PaymentMethods;
   rating: number;
   reviews: Review[];
 }

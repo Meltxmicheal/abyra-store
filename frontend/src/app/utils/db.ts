@@ -1268,7 +1268,7 @@ function mapOrderFromDB(row: any): Order {
   const address = (row.address || {}) as any;
   const items: CartItem[] = (row.order_items || []).map((oi: any) => {
     const snapshot = (oi.product_snapshot || {}) as any;
-    const productName = snapshot.name?.trim() || oi.products?.name?.trim() || "Product Info Unavailable";
+    const productName = snapshot.name?.trim() || oi.products?.name?.trim() || "Product Not Found";
     const productImages = snapshot.images || oi.products?.images || [];
     const productCategory = snapshot.category || oi.products?.category || "";
     const productBasePrice = snapshot.basePrice || oi.price || 0;

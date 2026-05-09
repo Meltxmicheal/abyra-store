@@ -22,6 +22,31 @@ export const Checkout = () => {
   const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Card' | 'COD'>('UPI');
   const [showAddressForm, setShowAddressForm] = useState(false);
   const { setGlobalLoading } = useAuthContext();
+  
+  // Calculate available methods based on all products in cart
+  const availableMethods = {
+    upi: cart.every(item => item.product.paymentMethods?.upi !== false),
+    cards: cart.every(item => item.product.paymentMethods?.cards !== false),
+    netbanking: cart.every(item => item.product.paymentMethods?.netbanking !== false),
+    wallets: cart.every(item => item.product.paymentMethods?.wallets !== false),
+    cod: cart.every(item => item.product.paymentMethods?.cod !== false),
+  };
+
+  // Ensure selected payment method is available
+  useEffect(() => {
+    if (cart.length > 0) {
+      if (paymentMethod === 'UPI' && !availableMethods.upi) {
+        if (availableMethods.cards) setPaymentMethod('Card');
+        else if (availableMethods.cod) setPaymentMethod('COD');
+      } else if (paymentMethod === 'Card' && !availableMethods.cards) {
+        if (availableMethods.upi) setPaymentMethod('UPI');
+        else if (availableMethods.cod) setPaymentMethod('COD');
+      } else if (paymentMethod === 'COD' && !availableMethods.cod) {
+        if (availableMethods.upi) setPaymentMethod('UPI');
+        else if (availableMethods.cards) setPaymentMethod('Card');
+      }
+    }
+  }, [cart, availableMethods.upi, availableMethods.cards, availableMethods.cod]);
 
   // Address form state
   const [formData, setFormData] = useState({
@@ -266,62 +291,74 @@ export const Checkout = () => {
               </h2>
 
               <div className="space-y-3">
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
-                  paymentMethod === 'UPI' ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={paymentMethod === 'UPI'}
-                    onChange={() => setPaymentMethod('UPI')}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center space-x-3">
-                    <Smartphone className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <span className="font-medium">UPI / QR Code</span>
-                      <p className="text-xs text-gray-500 mt-0.5">Pay via Razorpay — PhonePe, GPay, Paytm</p>
+                {availableMethods.upi && (
+                  <label className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
+                    paymentMethod === 'UPI' ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'UPI'}
+                      onChange={() => setPaymentMethod('UPI')}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center space-x-3">
+                      <Smartphone className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <span className="font-medium">UPI / QR Code</span>
+                        <p className="text-xs text-gray-500 mt-0.5">Pay via Razorpay — PhonePe, GPay, Paytm</p>
+                      </div>
                     </div>
-                  </div>
-                </label>
+                  </label>
+                )}
 
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
-                  paymentMethod === 'Card' ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={paymentMethod === 'Card'}
-                    onChange={() => setPaymentMethod('Card')}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center space-x-3">
-                    <CreditCard className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <span className="font-medium">Credit / Debit Card</span>
-                      <p className="text-xs text-gray-500 mt-0.5">Visa, Mastercard, RuPay — via Razorpay</p>
+                {availableMethods.cards && (
+                  <label className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
+                    paymentMethod === 'Card' ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'Card'}
+                      onChange={() => setPaymentMethod('Card')}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center space-x-3">
+                      <CreditCard className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <span className="font-medium">Credit / Debit Card</span>
+                        <p className="text-xs text-gray-500 mt-0.5">Visa, Mastercard, RuPay — via Razorpay</p>
+                      </div>
                     </div>
-                  </div>
-                </label>
+                  </label>
+                )}
 
-                <label className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
-                  paymentMethod === 'COD' ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
-                }`}>
-                  <input
-                    type="radio"
-                    name="payment"
-                    checked={paymentMethod === 'COD'}
-                    onChange={() => setPaymentMethod('COD')}
-                    className="sr-only"
-                  />
-                  <div className="flex items-center space-x-3">
-                    <Banknote className="w-5 h-5 text-purple-600" />
-                    <div>
-                      <span className="font-medium">Cash on Delivery</span>
-                      <p className="text-xs text-gray-500 mt-0.5">Pay when your order arrives</p>
+                {availableMethods.cod && (
+                  <label className={`block p-4 border-2 rounded-lg cursor-pointer transition ${
+                    paymentMethod === 'COD' ? 'border-purple-600 bg-purple-50' : 'border-gray-200'
+                  }`}>
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'COD'}
+                      onChange={() => setPaymentMethod('COD')}
+                      className="sr-only"
+                    />
+                    <div className="flex items-center space-x-3">
+                      <Banknote className="w-5 h-5 text-purple-600" />
+                      <div>
+                        <span className="font-medium">Cash on Delivery</span>
+                        <p className="text-xs text-gray-500 mt-0.5">Pay when your order arrives</p>
+                      </div>
                     </div>
+                  </label>
+                )}
+
+                {!availableMethods.upi && !availableMethods.cards && !availableMethods.cod && (
+                  <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm font-medium">
+                    No payment methods are available for the current selection of products. Please contact support.
                   </div>
-                </label>
+                )}
               </div>
             </div>
           </div>

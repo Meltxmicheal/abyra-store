@@ -19,7 +19,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
+    },
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/vite-env.d.ts", "src/types.d.ts", "src/imports/*.jpg", "src/imports/*.png", "src/imports/*.jpeg", "src/imports/*.webp"],
   "references": [{ "path": "./tsconfig.node.json" }]

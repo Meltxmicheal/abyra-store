@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Image as ImageIcon, CheckCircle2, RefreshCw, ChevronDown, Settings, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { X, Plus, Trash2, Image as ImageIcon, CheckCircle2, RefreshCw, ChevronDown, Settings, Upload, Loader2, AlertCircle, DollarSign } from 'lucide-react';
 import { productService, categoryService } from '../utils/db';
 import type { Product, Variant, Category } from '../utils/types';
 import { cloudinaryService } from '../utils/cloudinary';
@@ -57,6 +57,13 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
   const [discountPrice, setDiscountPrice] = useState<string>('0');
   const [images, setImages] = useState<ImageState[]>([]);
   const [variants, setVariants] = useState<Variant[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState({
+    cod: true,
+    upi: true,
+    cards: true,
+    netbanking: true,
+    wallets: true
+  });
 
   useEffect(() => {
     if (product && isOpen) {
@@ -68,6 +75,7 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
       setDiscountPrice((product.discountPrice || 0).toString());
       setImages((product.images || []).map(url => ({ url })));
       setVariants(product.variants || []);
+      setPaymentMethods(product.paymentMethods || { cod: true, upi: true, cards: true, netbanking: true, wallets: true });
     } else if (isOpen) {
       resetForm();
     }
@@ -82,6 +90,13 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
     setDiscountPrice('0');
     setImages([]);
     setVariants([]);
+    setPaymentMethods({
+      cod: true,
+      upi: true,
+      cards: true,
+      netbanking: true,
+      wallets: true
+    });
     setIsLoading(false);
   };
 
@@ -264,7 +279,7 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
             images: finalImageUrls,
             variants,
             productionTime: product?.productionTime || 7,
-            paymentMethods: product?.paymentMethods || ['UPI', 'Card', 'COD'],
+            paymentMethods,
           };
 
           // ── STEP 3: Save product to database ──
@@ -491,6 +506,44 @@ export const ProductFormModal = ({ isOpen, onClose, product, onSuccess }: Produc
               accept="image/jpeg,image/png,image/webp"
               className="hidden"
             />
+          </div>
+
+          {/* Payment Availability */}
+          <div className="p-8 bg-gray-50/50 rounded-[2rem] border border-gray-100 space-y-6">
+            <div className="flex items-center space-x-2">
+              <DollarSign className="w-5 h-5 text-purple-600" />
+              <h4 className="font-black text-gray-900 uppercase tracking-widest text-sm">Available Payment Methods</h4>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {[
+                { id: 'upi', name: 'UPI / Online', key: 'upi' },
+                { id: 'cards', name: 'Cards', key: 'cards' },
+                { id: 'netbanking', name: 'Net Banking', key: 'netbanking' },
+                { id: 'wallets', name: 'Wallets', key: 'wallets' },
+                { id: 'cod', name: 'Cash on Delivery', key: 'cod' },
+              ].map((method) => (
+                <div 
+                  key={method.id}
+                  onClick={() => setPaymentMethods(prev => ({ ...prev, [method.key]: !prev[method.key as keyof typeof prev] }))}
+                  className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col items-center justify-center text-center space-y-2 ${
+                    paymentMethods[method.key as keyof typeof paymentMethods] 
+                    ? 'border-purple-600 bg-purple-50 text-purple-900 shadow-md shadow-purple-100' 
+                    : 'border-gray-200 bg-white text-gray-400 opacity-60'
+                  }`}
+                >
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    paymentMethods[method.key as keyof typeof paymentMethods] ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {paymentMethods[method.key as keyof typeof paymentMethods] ? <CheckCircle2 className="w-5 h-5" /> : <div className="w-2 h-2 rounded-full bg-gray-300" />}
+                  </div>
+                  <span className="text-[10px] font-black uppercase tracking-widest leading-tight">{method.name}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">
+              Selected methods will be available for this product during checkout
+            </p>
           </div>
 
           {/* Variants */}
