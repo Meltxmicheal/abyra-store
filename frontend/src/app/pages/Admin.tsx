@@ -346,7 +346,7 @@ export const Admin = () => {
                                     </p>
                                   ) : null}
                                   <p className="text-[10px] font-medium text-gray-400">
-                                    x{item.quantity}
+                                    Qty: {item.quantity}
                                   </p>
                                 </div>
                               </div>

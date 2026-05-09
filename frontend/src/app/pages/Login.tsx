@@ -105,6 +105,7 @@ export const Login = () => {
     }
 
     try {
+      setLoading(true);
       // 1. Verify credentials and check 2FA status via Backend FIRST
       // This prevents creating a Supabase session before 2FA is verified
       const deviceToken = localStorage.getItem('abyra_admin_device_token');
@@ -377,8 +378,8 @@ export const Login = () => {
             >
               {loading ? (
                 <>
-                  <RefreshCw className="w-5 h-5 animate-spin" />
-                  <span>Logging in...</span>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Signing in...</span>
                 </>
               ) : (
                 <span>Login</span>

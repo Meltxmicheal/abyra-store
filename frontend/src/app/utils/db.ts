@@ -813,9 +813,14 @@ export const orderService = {
       const rows = data.map((o) => {
         const address = o.address as any;
         const items = (o.order_items || [])
-          .map((i: any) => `${(i.product_snapshot as any)?.name} (x${i.quantity})`)
+          .map((i: any) => {
+            const snap = i.product_snapshot || {};
+            const name = snap.name || i.products?.name || "Unknown Product";
+            const variant = snap.variant?.name ? ` - ${snap.variant.name}` : "";
+            return `${name}${variant} (Qty: ${i.quantity})`;
+          })
           .join("; ");
-        return [o.id, address?.name || "", address?.phone || "", `"${items}"`, o.total_amount, o.payment_method, o.order_status, new Date(o.created_at).toLocaleDateString("en-IN")];
+        return [o.id, `"${address?.name || ""}"`, `"${address?.phone || ""}"`, `"${items}"`, o.total_amount, o.payment_method, o.order_status, new Date(o.created_at).toLocaleDateString("en-IN")];
       });
 
       return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -1299,6 +1304,8 @@ function mapOrderFromDB(row: any): Order {
         rating: snapshot.rating || 0,
         reviews: snapshot.reviews || [],
         description: snapshot.description || "",
+        images: productImages || [],
+        category: productCategory || "",
       },
       variant: productVariant,
     };

@@ -188,7 +188,8 @@ export const OrderDetailModal = ({
                     <p className="font-bold text-gray-900 text-sm truncate">
                       {item.product.name}
                     </p>
-                    <p className="text-xs text-gray-600">{item.variant.name}</p>
+                    {item.variant?.name && <p className="text-xs text-gray-600">Variant: {item.variant.name}</p>}
+                    <p className="text-xs text-gray-600">Qty: {item.quantity}</p>
                     <p className="text-sm font-bold text-purple-600 mt-1">
                       ₹{(item.variant?.price || item.product.basePrice) * item.quantity}
                     </p>
