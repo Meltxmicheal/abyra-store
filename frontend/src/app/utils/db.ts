@@ -573,7 +573,7 @@ export const orderService = {
   getById: async (orderId: string): Promise<Order | null> => {
     const { data: order, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*, product_snapshot, products(name, images)), users(name, email)`)
+      .select(`*, order_items(*, product_snapshot, products(name, images, product_images(image_url, is_primary))), users(name, email)`)
       .eq("id", orderId)
       .single();
 
@@ -584,7 +584,7 @@ export const orderService = {
   getUserOrders: async (userId: string): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*, product_snapshot, products(name, images))`)
+      .select(`*, order_items(*, product_snapshot, products(name, images, product_images(image_url, is_primary)))`)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -595,7 +595,7 @@ export const orderService = {
   getAllOrders: async (): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*, product_snapshot, products(name, images)), users(name, email)`)
+      .select(`*, order_items(*, product_snapshot, products(name, images, product_images(image_url, is_primary))), users(name, email)`)
       .order("created_at", { ascending: false });
 
     if (error || !data) return [];
@@ -862,7 +862,7 @@ export const orderService = {
         async (payload) => {
           const { data } = await supabase
             .from("orders")
-            .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images))`)
+            .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images, product_images(image_url, is_primary)))`)
             .eq("id", orderId)
             .single();
           if (data) callback(mapOrderFromDB(data));
@@ -1271,6 +1271,10 @@ function mapOrderFromDB(row: any): Order {
     const productName = (snapshot.name?.trim() || oi.products?.name?.trim() || "").trim();
     const productImages = Array.isArray(snapshot.images) && snapshot.images.length > 0
       ? snapshot.images
+      : Array.isArray(oi.products?.product_images) && oi.products.product_images.length > 0
+      ? [...oi.products.product_images]
+          .sort((a: any, b: any) => (a.is_primary === b.is_primary ? 0 : a.is_primary ? -1 : 1))
+          .map((img: any) => img.image_url)
       : Array.isArray(oi.products?.images) ? oi.products.images : [];
     const productCategory = snapshot.category || oi.products?.category || "";
     const productBasePrice = snapshot.basePrice || oi.price || 0;
