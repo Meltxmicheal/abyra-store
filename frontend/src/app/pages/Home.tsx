@@ -1,6 +1,7 @@
 import { Link } from 'react-router';
 import { Helmet } from 'react-helmet-async';
 import { productService } from '../utils/db';
+import { supabase } from '../utils/supabase';
 import type { Product } from '../utils/types';
 import { ProductCard } from '../components/ProductCard';
 import { CategoryCarousel } from '../components/CategoryCarousel';
@@ -34,9 +35,37 @@ export const Home = () => {
       }
     };
     load();
+
+    // Real-time subscription for products
+    const productsChannel = supabase
+      .channel('products_realtime_home')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        if (!isMounted) return;
+        
+        if (payload.eventType === 'INSERT') {
+          // Need to fetch full product data with relations
+          productService.getById(payload.new.id).then(newProduct => {
+            if (newProduct && isMounted) {
+              setProducts(prev => [...prev, newProduct]);
+            }
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          // Need to fetch updated product data
+          productService.getById(payload.new.id).then(updatedProduct => {
+            if (updatedProduct && isMounted) {
+              setProducts(prev => prev.map(p => p.id === payload.new.id ? updatedProduct : p));
+            }
+          });
+        } else if (payload.eventType === 'DELETE') {
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
     return () => {
       isMounted = false;
       setGlobalLoading(false);
+      supabase.removeChannel(productsChannel);
     };
   }, [setGlobalLoading]);
 

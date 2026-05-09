@@ -1,6 +1,6 @@
 import { ReactNode, createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { supabaseAuthService, User } from '../utils/supabaseAuth';
-import { cartService, CartItem } from '../utils/db';
+import { cartService, productService, CartItem } from '../utils/db';
 import { supabase } from '../utils/supabase';
 
 // ============================================================
@@ -131,6 +131,47 @@ export const Providers = ({ children }: { children: ReactNode }) => {
       subscription.unsubscribe();
     };
   }, []);
+
+  // Real-time subscription for products to update cart
+  useEffect(() => {
+    if (!user) return;
+
+    const productsChannel = supabase
+      .channel('products_realtime_cart')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, async (payload) => {
+        if (!mounted) return;
+
+        try {
+          const updatedProduct = await productService.getById(payload.new.id);
+          if (updatedProduct && mounted) {
+            setCart(prevCart => 
+              prevCart.map(item => 
+                item.productId === payload.new.id 
+                  ? { ...item, product: updatedProduct }
+                  : item
+              )
+            );
+          }
+        } catch (err) {
+          console.error('[Cart] Error updating product in cart:', err);
+        }
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'products' }, (payload) => {
+        if (!mounted) return;
+
+        // Remove items from cart if product is deleted
+        setCart(prevCart => {
+          const filteredCart = prevCart.filter(item => item.productId !== payload.old.id);
+          setCartCount(filteredCart.reduce((sum, item) => sum + item.quantity, 0));
+          return filteredCart;
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(productsChannel);
+    };
+  }, [user]);
 
   // -------------------------------------------------------
   // Cart helpers

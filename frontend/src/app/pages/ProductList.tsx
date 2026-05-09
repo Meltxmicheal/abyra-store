@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { productService, categoryService } from '../utils/db';
+import { supabase } from '../utils/supabase';
 import type { Product, Category } from '../utils/types';
 import { ProductCard } from '../components/ProductCard';
 import { Search, SlidersHorizontal } from 'lucide-react';
@@ -40,9 +41,53 @@ export const ProductList = () => {
 
     fetchData();
 
+    // Real-time subscription for products
+    const productsChannel = supabase
+      .channel('products_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+        if (!isMounted) return;
+        
+        if (payload.eventType === 'INSERT') {
+          // Need to fetch full product data with relations
+          productService.getById(payload.new.id).then(newProduct => {
+            if (newProduct && isMounted) {
+              setProducts(prev => [...prev, newProduct]);
+            }
+          });
+        } else if (payload.eventType === 'UPDATE') {
+          // Need to fetch updated product data
+          productService.getById(payload.new.id).then(updatedProduct => {
+            if (updatedProduct && isMounted) {
+              setProducts(prev => prev.map(p => p.id === payload.new.id ? updatedProduct : p));
+            }
+          });
+        } else if (payload.eventType === 'DELETE') {
+          setProducts(prev => prev.filter(p => p.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
+    // Real-time subscription for categories
+    const categoriesChannel = supabase
+      .channel('categories_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, (payload) => {
+        if (!isMounted) return;
+        
+        if (payload.eventType === 'INSERT') {
+          setCategories(prev => [...prev, payload.new as Category]);
+        } else if (payload.eventType === 'UPDATE') {
+          setCategories(prev => prev.map(c => c.id === payload.new.id ? payload.new as Category : c));
+        } else if (payload.eventType === 'DELETE') {
+          setCategories(prev => prev.filter(c => c.id !== payload.old.id));
+        }
+      })
+      .subscribe();
+
     return () => {
       isMounted = false;
       setGlobalLoading(false);
+      supabase.removeChannel(productsChannel);
+      supabase.removeChannel(categoriesChannel);
     };
   }, [setGlobalLoading]);
 

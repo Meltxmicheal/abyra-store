@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useParams, useNavigate } from 'react-router';
 import { productService, reviewService } from '../utils/db';
+import { supabase } from '../utils/supabase';
 import type { Product, Variant } from '../utils/types';
 import { Star, ShoppingCart, Clock, CreditCard, Tag, ChevronRight, Check, MessageSquare, Reply, Send, Loader2, ChevronLeft, Share2 } from 'lucide-react';
 import { LoadingAnimation } from '../components/LoadingAnimation';
@@ -112,8 +113,33 @@ export const ProductDetail = () => {
     };
 
     load();
-    return () => { isMounted = false; };
-  }, [id, user, setGlobalLoading]);
+
+    // Real-time subscription for product updates
+    const productsChannel = supabase
+      .channel('products_realtime_detail')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'products' }, (payload) => {
+        if (!isMounted || payload.new.id !== id) return;
+        
+        // Update the product
+        productService.getById(payload.new.id).then(updatedProduct => {
+          if (updatedProduct && isMounted) {
+            setProduct(updatedProduct);
+          }
+        });
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'products' }, (payload) => {
+        if (!isMounted || payload.old.id !== id) return;
+        
+        // Product deleted, navigate away
+        navigate('/products');
+      })
+      .subscribe();
+
+    return () => { 
+      isMounted = false;
+      supabase.removeChannel(productsChannel);
+    };
+  }, [id, user, setGlobalLoading, navigate]);
 
   const refreshProduct = async () => {
     // This is now used for manual refreshes like after submitting a review

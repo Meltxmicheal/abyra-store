@@ -326,11 +326,30 @@ export const Admin = () => {
                           </div>
                         </td>
                         <td className="px-8 py-6">
-                          <div className="max-w-[200px]">
+                          <div className="max-w-[200px] space-y-2">
                             {order.items.map(item => (
-                              <p key={item.productId} className="text-xs font-medium text-gray-600 truncate">
-                                {item.product.name} (x{item.quantity})
-                              </p>
+                              <div key={item.productId} className="flex items-center space-x-3">
+                                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+                                  <img 
+                                    src={item.product.images[0] || '/placeholder-product.png'} 
+                                    alt="" 
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-gray-900 truncate">
+                                    {item.product.name}
+                                  </p>
+                                  {item.variant?.name && (
+                                    <p className="text-[10px] font-medium text-gray-500 truncate">
+                                      {item.variant.name}
+                                    </p>
+                                  )}
+                                  <p className="text-[10px] font-medium text-gray-400">
+                                    x{item.quantity}
+                                  </p>
+                                </div>
+                              </div>
                             ))}
                           </div>
                         </td>
