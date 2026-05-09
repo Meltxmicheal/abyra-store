@@ -176,7 +176,7 @@ export const OrderDetailModal = ({
                 >
                   <div className="relative w-16 h-16 rounded-lg overflow-hidden flex-shrink-0">
                     <img
-                      src={item.product.images[0] || '/placeholder-product.png'}
+                      src={item.product.images?.[0] || '/placeholder-product.png'}
                       alt={item.product.name || 'Product image'}
                       className="w-full h-full object-cover"
                     />

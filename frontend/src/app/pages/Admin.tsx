@@ -331,7 +331,7 @@ export const Admin = () => {
                               <div key={item.productId} className="flex items-center space-x-3">
                                 <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
                                   <img 
-                                    src={item.product.images[0] || '/placeholder-product.png'} 
+                                    src={item.product.images?.[0] || '/placeholder-product.png'} 
                                     alt="" 
                                     className="w-full h-full object-cover"
                                   />

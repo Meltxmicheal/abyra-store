@@ -548,11 +548,11 @@ export const orderService = {
     }
     if (!order) return null;
 
-    // Insert order items
+    // Insert order items — CRITICAL: must have error handling
     const orderItemsPayload = cartItems.map((item) => ({
       order_id: order.id,
       product_id: item.productId,
-      variant_id: item.variantId,
+      variant_id: null, // Variant info stored in product_snapshot (avoids FK constraint issues with product_variants table)
       quantity: item.quantity,
       price: item.variant?.price || item.product.basePrice,
       product_snapshot: {
@@ -565,7 +565,11 @@ export const orderService = {
       },
     }));
 
-    await supabase.from("order_items").insert(orderItemsPayload);
+    const { error: itemsError } = await supabase.from("order_items").insert(orderItemsPayload);
+    if (itemsError) {
+      console.error("[db.ts] CRITICAL: Failed to insert order_items:", itemsError);
+      console.error("[db.ts] Payload was:", JSON.stringify(orderItemsPayload));
+    }
 
     return mapOrder(order, cartItems, address);
   },
@@ -573,7 +577,7 @@ export const orderService = {
   getById: async (orderId: string): Promise<Order | null> => {
     const { data: order, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*, product_snapshot, products(name, images, product_images(image_url, is_primary))), users(name, email)`)
+      .select(`*, order_items(*, product_snapshot, products(name, images, variants, product_images(image_url, is_primary))), users(name, email)`)
       .eq("id", orderId)
       .single();
 
@@ -584,7 +588,7 @@ export const orderService = {
   getUserOrders: async (userId: string): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*, product_snapshot, products(name, images, product_images(image_url, is_primary)))`)
+      .select(`*, order_items(*, product_snapshot, products(name, images, variants, product_images(image_url, is_primary))), users(name, email)`)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -595,7 +599,7 @@ export const orderService = {
   getAllOrders: async (): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(*, product_snapshot, products(name, images, product_images(image_url, is_primary))), users(name, email)`)
+      .select(`*, order_items(*, product_snapshot, products(name, images, variants, product_images(image_url, is_primary))), users(name, email)`)
       .order("created_at", { ascending: false });
 
     if (error || !data) return [];
@@ -804,7 +808,7 @@ export const orderService = {
     if (type === "orders") {
       const { data } = await supabase
         .from("orders")
-        .select(`*, order_items(*)`)
+        .select(`*, order_items(*, product_snapshot, products(name, images))`)
         .order("created_at", { ascending: false });
 
       if (!data) return "";
