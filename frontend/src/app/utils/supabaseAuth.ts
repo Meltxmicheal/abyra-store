@@ -128,19 +128,12 @@ export const supabaseAuthService = {
   // -------------------------------------------------------
   getCurrentUser: async (): Promise<User | null> => {
     try {
-      // Use a promise race for getSession to prevent infinite hang
-      // Increased timeout to 15s for better reliability on slow networks
-      const sessionResult = await Promise.race([
-        supabase.auth.getSession(),
-        new Promise<any>((_, reject) => setTimeout(() => reject(new Error('SESSION_TIMEOUT')), 15000))
-      ]).catch(() => ({ data: { session: null } }));
-
-      const session = sessionResult.data?.session;
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return null;
 
       const profileResult = await supabase.from('users').select('*').eq('id', session.user.id).single();
 
-      if (profileResult.error) {
+      if (profileResult.error || !profileResult.data) {
         const fallbackProfile = {
           id: session.user.id,
           email: session.user.email || '',

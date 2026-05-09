@@ -573,7 +573,7 @@ export const orderService = {
   getById: async (orderId: string): Promise<Order | null> => {
     const { data: order, error } = await supabase
       .from("orders")
-      .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images)), users(name, email)`)
+      .select(`*, order_items(*, product_snapshot, products(name, images)), users(name, email)`)
       .eq("id", orderId)
       .single();
 
@@ -584,7 +584,7 @@ export const orderService = {
   getUserOrders: async (userId: string): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images))`)
+      .select(`*, order_items(*, product_snapshot, products(name, images))`)
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -595,7 +595,7 @@ export const orderService = {
   getAllOrders: async (): Promise<Order[]> => {
     const { data, error } = await supabase
       .from("orders")
-      .select(`*, order_items(id, order_id, product_id, variant_id, quantity, price, product_snapshot, products(name, images)), users(name, email)`)
+      .select(`*, order_items(*, product_snapshot, products(name, images)), users(name, email)`)
       .order("created_at", { ascending: false });
 
     if (error || !data) return [];
@@ -1268,8 +1268,10 @@ function mapOrderFromDB(row: any): Order {
   const address = (row.address || {}) as any;
   const items: CartItem[] = (row.order_items || []).map((oi: any) => {
     const snapshot = (oi.product_snapshot || {}) as any;
-    const productName = snapshot.name?.trim() || oi.products?.name?.trim() || "Product Not Found";
-    const productImages = snapshot.images || oi.products?.images || [];
+    const productName = (snapshot.name?.trim() || oi.products?.name?.trim() || "").trim();
+    const productImages = Array.isArray(snapshot.images) && snapshot.images.length > 0
+      ? snapshot.images
+      : Array.isArray(oi.products?.images) ? oi.products.images : [];
     const productCategory = snapshot.category || oi.products?.category || "";
     const productBasePrice = snapshot.basePrice || oi.price || 0;
     const productVariant = snapshot.variant || {
@@ -1285,9 +1287,7 @@ function mapOrderFromDB(row: any): Order {
       quantity: oi.quantity,
       product: {
         id: snapshot.id || oi.product_id,
-        name: productName,
-        images: productImages,
-        category: productCategory,
+        name: productName || "Product unavailable",
         basePrice: productBasePrice,
         variants: [],
         productionTime: snapshot.productionTime || 7,

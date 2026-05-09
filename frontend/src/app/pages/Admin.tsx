@@ -338,13 +338,13 @@ export const Admin = () => {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className="text-xs font-bold text-gray-900 truncate">
-                                    {item.product.name}
+                                    {item.product.name || 'Product unavailable'}
                                   </p>
-                                  {item.variant?.name && (
+                                  {item.variant?.name ? (
                                     <p className="text-[10px] font-medium text-gray-500 truncate">
                                       {item.variant.name}
                                     </p>
-                                  )}
+                                  ) : null}
                                   <p className="text-[10px] font-medium text-gray-400">
                                     x{item.quantity}
                                   </p>
